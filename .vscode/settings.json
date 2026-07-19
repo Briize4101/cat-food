@@ -1,0 +1,11 @@
+﻿{
+    "liveSassCompile.settings.formats":  [
+                                             {
+                                                 "format":  "expanded",
+                                                 "extensionName":  ".css",
+                                                 "savePath":  "/css"
+                                             }
+                                         ],
+    "python-envs.defaultEnvManager":  "ms-python.python:system",
+    "python.defaultInterpreterPath":  "C:\\Users\\jsesk\\Desktop\\Nschool\\My Project\\2\\.venv\\Scripts\\python.exe"
+}

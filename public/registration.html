@@ -1,0 +1,141 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Registration</title>
+    <link rel="stylesheet" href="./css/normalize.css">
+    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="./vendor/bootstrap-grid.css">
+    <link rel="stylesheet" href="./vendor/fontawesome-free-7.0.0-web/css/all.css">
+</head>
+
+<body>
+    <div class="wrapper">
+        <header class="header">
+            <div class="announcement-bar">
+                <img src="https://uniam.jp/cdn/shop/t/37/assets/icon01.png?v=81928955142722445431683770454" alt="noimage" >       
+                <p id="test" style="padding: 0 12px; font-weight: 800;">
+                    Purchase over 10,000 yen (tax included) and receive up to 770 yen free shipping!
+                </p>         
+            </div>
+            <div class="navbar">
+                <div class="container">
+                    <a href="#popup-menu" class="menu">
+                        <span></span>
+                        <span></span>
+                    </a>
+                    <div class="nav">
+                        <div class="nav-item"><a href="#" class="nav-link">Product List</a></div>
+                        <div class="nav-item"><a href="#" class="nav-link">Features of Uniam</a></div>
+                        <div class="nav-item"><a href="#" class="nav-link">For cats, click here</a></div>
+                        <div class="nav-item"><a href="#" class="nav-link">Development Story</a></div>
+                    </div>
+                </div>
+                <a href="project.html" class="brand">
+                    <img src="https://uniam.jp/cdn/shop/files/header-uniam_logo.png?v=1693479467&width=200" 
+                    alt="uniam" width="100" height="25.0" loading="eager" class="header__heading-logo" sizes="(min-width: 750px) 100px, 50vw">
+                </a>
+                <div class="icon">
+                    <a href="#" class="icon-link"><i class="fa-solid fa-cat" style="font-size: 28px;"></i></a>
+                    <a href="#" class="icon-link"><i class="fa-solid fa-cart-shopping" style="font-size: 28px;"></i></a>
+                </div>
+            </div>
+        </header>
+        <div class="space"></div>
+
+        <div class="login">
+            <div class="container">
+                <div class="title">Sign up</div>
+                <div class="subtitle">Create Account</div>
+
+                <form id="registerForm">
+                    <div class="input-row">
+                        <input type="email" id="regEmail" name="email" placeholder="email address" required>
+                    </div>
+                    <div class="input-row">
+                        <input type="password" id="regPassword" name="password" placeholder="password" required>
+                    </div>
+                    <div class="input-row">
+                        <input type="password" id="regConfirmPassword" name="confirmPassword" placeholder="confirm password" required>
+                    </div>
+
+                    <div class="btn-container" style="margin-top: 40px;">
+                        <button type="submit" id="registerBtn" class="btn">Register</button>
+                    </div>
+                    
+                    <a href="log_in.html" class="registration">Back to Log in</a>
+                </form>    
+            </div>
+        </div>
+
+        <div class="menubg">
+            <a href="#" class="close"><div class="menu_btn"><span></span><span></span></div><p>close</p></a>
+            <ul class="navlist">
+                <li><a href="#">Product List</a></li>
+                <li><a href="#">Food</a></li>
+                <li><a href="#">Goods</a></li>
+                <li><a href="#">Characteristics of Fresh Food</a></li>
+                <li><a href="#">Development Story</a></li>
+                <li><a href="#">Kainishi Review</a></li>
+                <li><a href="#">For cats, click here</a></li>
+                <li><a href="#">List of Stores</a></li>
+            </ul>
+            <ul class="btmbox">
+                <li><a href="#">Company Profile</a></li>
+                <li><a href="#">Frequently asked questions</a></li>
+                <li><a href="#">Inquiry</a></li>
+                <li><a href="#">Uniam Club</a></li>
+            </ul>
+        </div>
+    </div>
+</body>
+
+<script src="JS/auth.js?v=20260719"></script>
+
+<script>
+    (async function() {
+        const loggedIn = await checkLoginStatus();
+        if (loggedIn) {
+            window.location.replace("member.html");
+            return;
+        }
+
+        const registerForm = document.getElementById("registerForm");
+        if (!registerForm) return;
+
+        registerForm.addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const emailVal = document.getElementById("regEmail").value.trim();
+            const passwordVal = document.getElementById("regPassword").value;
+            const confirmPasswordVal = document.getElementById("regConfirmPassword").value;
+
+            if (passwordVal !== confirmPasswordVal) {
+                alert("兩次輸入的密碼不相同，請重新確認！");
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: emailVal, password: passwordVal })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert("註冊成功，請重新登入");
+                    window.location.href = "log_in.html";
+                } else {
+                    alert(data.message || "註冊失敗，請稍後再試");
+                }
+            } catch (err) {
+                console.error("Register failed:", err);
+                alert("註冊時發生錯誤，請稍後再試");
+            }
+        });
+    })();
+</script>
+</html>

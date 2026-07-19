@@ -1,0 +1,78 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Member</title>
+
+    <style>
+        body {
+            display: none !important;
+        }
+    </style>
+
+    <script src="JS/auth.js?v=20260719"></script>
+    <script>
+    // 摰儔??body ?澆??箔??撘?
+        function showBody() {
+            if (document.body) {
+                document.body.style.setProperty("display", "block", "important");
+            }
+        }
+        
+        checkLoginStatus().then(loggedIn => {
+            if (!loggedIn) {
+                document.documentElement.style.display = "block";
+                window.location.replace("log_in.html"); // ??replace 隞? href嚗?撽?銝???銝?銝??蝛箇蝝??
+            } else {
+                // 憒???伐??憿舐內?批捆
+                if (document.readyState === "loading") {
+                    document.addEventListener("DOMContentLoaded", showBody);
+                } else {
+                    showBody();
+                }
+            }
+        });
+    </script>
+
+    <link rel="stylesheet" href="./css/normalize.css">
+    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="./vendor/bootstrap-grid.css">
+    <link rel="stylesheet" href="./vendor/fontawesome-free-7.0.0-web/css/all.css">
+</head>
+
+
+<body>
+    <div class="wrapper">
+        <header class="header">
+            <div class="navbar" style="padding: 40px;">
+                <a href="project.html" class="brand">
+                    <img src="https://uniam.jp/cdn/shop/files/header-uniam_logo.png?v=1693479467&width=200" 
+                    alt="uniam" width="100" height="25.0" loading="eager" class="header__heading-logo" sizes="(min-width: 750px) 100px, 50vw">
+                </a>
+                <a href="#" class="logout" style="display: block; color: #000; text-decoration: none; position:absolute; right:40px; font-weight:600;">Logout</a>
+            </div>
+        </header>
+        <div class="space"></div>
+
+        <div class="login">
+            <div class="container" style="padding-top: 0;">
+                <div class="title" style="font-size: 36px;">MY PAGE</div>
+            </div>
+        </div>
+    </div>
+</body>
+
+<script>
+const logoutBtn = document.querySelector(".logout");
+
+if (logoutBtn) {
+    logoutBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        logout();
+    });
+}
+</script>
+</html>
+
+

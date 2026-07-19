@@ -1,0 +1,169 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log_in</title>
+    <link rel="stylesheet" href="./css/normalize.css">
+    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="./vendor/bootstrap-grid.css">
+    <link rel="stylesheet" href="./vendor/fontawesome-free-7.0.0-web/css/all.css">
+</head>
+
+
+<body>
+    <div class="wrapper">
+        <header class="header">
+            <div class="announcement-bar">
+                <img src="https://uniam.jp/cdn/shop/t/37/assets/icon01.png?v=81928955142722445431683770454" 
+                alt="noimage" >       
+                <p id="test" style="padding: 0 12px; font-weight: 800;">
+                    Purchase over 10,000 yen (tax included) and receive up to 770 yen free shipping!
+                </p>         
+            </div>
+            <div class="navbar">
+                <div class="container">
+                    <a href="#popup-menu" class="menu">
+                        <span></span>
+                        <span></span>
+                    </a>
+                    <div class="nav">
+                        <div class="nav-item">
+                            <a href="#" class="nav-link">Product List</a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="#" class="nav-link">Features of Uniam</a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="#" class="nav-link">For cats, click here</a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="#" class="nav-link">Development Story</a>
+                        </div>
+                    </div>
+                </div>
+                <a href="project.html" class="brand">
+                    <img src="https://uniam.jp/cdn/shop/files/header-uniam_logo.png?v=1693479467&width=200" 
+                    alt="uniam" width="100" height="25.0" loading="eager" class="header__heading-logo" sizes="(min-width: 750px) 100px, 50vw">
+                </a>
+                <div class="icon">
+                    <a href="#" class="icon-link">
+                        <i class="fa-solid fa-cat" style="font-size: 28px;" ></i>
+                    </a>
+                    <a href="#" class="icon-link">
+                        <i class="fa-solid fa-cart-shopping" style="font-size: 28px;" ></i>
+                    </a>
+                </div>
+            </div>
+        </header>
+        <div class="space"></div>
+
+        <div class="login">
+            <div class="container">
+                <div class="title">Log in</div>
+                <div class="subtitle">Login</div>
+
+                <form id="loginForm">
+
+                    <div class="input-row">
+                        <input type="email" id="email" name="email" placeholder="email address" required>
+                    </div>
+                    <div class="input-row">
+                        <input type="password" id="password" name="password" placeholder="password" required>
+                    </div>
+                    <div class="forget-password">
+                        <a href="#!">Forget your password?</a>
+                    </div>
+                    <div class="btn-container" style="margin-top: 40px;">
+                        <button type="submit" id="loginBtn" class="btn">Log in</button>
+                    </div>
+                    
+                    <a href="registration.html" class="registration">Account Registration</a>
+                </form>    
+            </div>
+        </div>
+        <!-- sidebar -->
+        <div class="menubg">
+            <a href="#" class="close">
+                <div class="menu_btn">
+                <span></span>
+                <span></span>
+                </div>
+                <p>close</p>
+            </a>
+            <ul class="navlist">
+                <li>
+                    <a href="#">Product List</a>
+                </li>
+                <li>
+                    <a href="#">Food</a>
+                </li>
+                <li>
+                    <a href="#">Goods</a>
+                </li>
+                <li>
+                    <a href="#">Characteristics of Fresh Food</a>
+                </li>
+                <li>
+                    <a href="#">Development Story</a>
+                </li>
+                <li>
+                    <a href="#">Kainishi Review</a>
+                </li>
+                <li>
+                    <a href="#">For cats, click here</a>
+                </li>
+                <li>
+                    <a href="#">List of Stores</a>
+                </li>
+            </ul>
+            <ul class="btmbox">
+                <li>
+                    <a href="#">Company Profile</a>
+                </li>
+                <li>
+                    <a href="#">Frequently asked questions</a>
+                </li>
+                <li>
+                    <a href="#">Inquiry</a>
+                </li>
+                <li>
+                    <a href="#">Uniam Club</a>
+                </li>
+            </ul>
+            <ul class="snslist navlist">
+                <li>
+                    <a href="#"><i class="fa-brands fa-line"></i></a>
+                </li>
+                <li>
+                    <a href="#"><i class="fa-brands fa-instagram"></i></a>
+                </li>
+                <li>
+                    <a href="#"><i class="fa-brands fa-facebook"></i></a>
+                </li>
+                <li>
+                    <a href="#"><i class="fa-brands fa-bilibili"></i></a>
+                </li>
+                <li>
+                    <a href="#"><i class="fa-brands fa-canadian-maple-leaf"></i></a>
+                </li>
+                <li>
+                    <a href="#"><i class="fa-brands fa-connectdevelop"></i></a>
+                </li>
+                <li>
+                    <a href="#"><i class="fa-brands fa-delicious"></i></a>
+                </li>
+            </ul>
+        </div>
+        <!--  -->
+    </div>
+</body>
+
+<script src="JS/auth.js?v=20260719"></script>
+
+<script>
+    initLoginForm();
+</script>
+</html>
+
+
