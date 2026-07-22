@@ -9,23 +9,77 @@
         body {
             display: none !important;
         }
+
+        .member-profile {
+            max-width: 560px;
+            margin: 32px auto 80px;
+            padding: 0 20px;
+        }
+
+        .member-profile .subtitle {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .member-profile .profile-row {
+            margin-bottom: 16px;
+        }
+
+        .member-profile label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .member-profile input,
+        .member-profile textarea {
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+            padding: 12px 14px;
+        }
+
+        .member-profile textarea {
+            min-height: 96px;
+            resize: vertical;
+        }
+
+        .member-profile input[readonly] {
+            background: #f6f6f6;
+            color: #666;
+        }
+
+        .member-profile .profile-actions {
+            align-items: center;
+            display: flex;
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .member-profile .profile-status {
+            color: #555;
+            font-size: 14px;
+        }
     </style>
 
-    <script src="JS/auth.js?v=20260719"></script>
+    <script src="JS/auth.js?v=20260721"></script>
     <script>
-    // 摰儔??body ?澆??箔??撘?
         function showBody() {
             if (document.body) {
                 document.body.style.setProperty("display", "block", "important");
             }
         }
-        
+
         checkLoginStatus().then(loggedIn => {
             if (!loggedIn) {
                 document.documentElement.style.display = "block";
-                window.location.replace("log_in.html"); // ??replace 隞? href嚗?撽?銝???銝?銝??蝛箇蝝??
+                window.location.replace("log_in.html");
             } else {
-                // 憒???伐??憿舐內?批捆
                 if (document.readyState === "loading") {
                     document.addEventListener("DOMContentLoaded", showBody);
                 } else {
@@ -41,13 +95,12 @@
     <link rel="stylesheet" href="./vendor/fontawesome-free-7.0.0-web/css/all.css">
 </head>
 
-
 <body>
     <div class="wrapper">
         <header class="header">
             <div class="navbar" style="padding: 40px;">
                 <a href="project.html" class="brand">
-                    <img src="https://uniam.jp/cdn/shop/files/header-uniam_logo.png?v=1693479467&width=200" 
+                    <img src="https://uniam.jp/cdn/shop/files/header-uniam_logo.png?v=1693479467&width=200"
                     alt="uniam" width="100" height="25.0" loading="eager" class="header__heading-logo" sizes="(min-width: 750px) 100px, 50vw">
                 </a>
                 <a href="#" class="logout" style="display: block; color: #000; text-decoration: none; position:absolute; right:40px; font-weight:600;">Logout</a>
@@ -60,6 +113,32 @@
                 <div class="title" style="font-size: 36px;">MY PAGE</div>
             </div>
         </div>
+
+        <section class="member-profile">
+            <div class="subtitle">Member Profile</div>
+            <form id="profileForm">
+                <div class="profile-row">
+                    <label for="profileEmail">Email</label>
+                    <input type="email" id="profileEmail" readonly>
+                </div>
+                <div class="profile-row">
+                    <label for="profileName">Name</label>
+                    <input type="text" id="profileName" name="name" autocomplete="name">
+                </div>
+                <div class="profile-row">
+                    <label for="profilePhone">Phone</label>
+                    <input type="tel" id="profilePhone" name="phone" autocomplete="tel">
+                </div>
+                <div class="profile-row">
+                    <label for="profileAddress">Address</label>
+                    <textarea id="profileAddress" name="address" autocomplete="street-address"></textarea>
+                </div>
+                <div class="profile-actions">
+                    <button type="submit" id="profileSaveBtn" class="btn">Save</button>
+                    <span id="profileStatus" class="profile-status"></span>
+                </div>
+            </form>
+        </section>
     </div>
 </body>
 
@@ -72,7 +151,7 @@ if (logoutBtn) {
         logout();
     });
 }
+
+initMemberProfileForm();
 </script>
 </html>
-
-

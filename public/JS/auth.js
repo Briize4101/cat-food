@@ -114,3 +114,99 @@ document.addEventListener('DOMContentLoaded', () => {
     initMemberLink();
     initLoginPageRedirect();
 });
+async function loadMemberProfile() {
+    const token = localStorage.getItem('userToken');
+    if (!token) return;
+
+    try {
+        const response = await fetch('/api/member/profile', {
+            method: 'GET',
+            cache: 'no-store',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                clearLoginState();
+                window.location.replace('log_in.html');
+            }
+            return;
+        }
+
+        const data = await response.json();
+        if (!data.success || !data.profile) return;
+
+        const profile = data.profile;
+        const emailInput = document.getElementById('profileEmail');
+        const nameInput = document.getElementById('profileName');
+        const phoneInput = document.getElementById('profilePhone');
+        const addressInput = document.getElementById('profileAddress');
+
+        if (emailInput) emailInput.value = profile.email || '';
+        if (nameInput) nameInput.value = profile.name || '';
+        if (phoneInput) phoneInput.value = profile.phone || '';
+        if (addressInput) addressInput.value = profile.address || '';
+    } catch (error) {
+        console.error('Load member profile failed:', error);
+    }
+}
+
+function initMemberProfileForm() {
+    const profileForm = document.getElementById('profileForm');
+    if (!profileForm) return;
+
+    loadMemberProfile();
+
+    profileForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const token = localStorage.getItem('userToken');
+        if (!token) {
+            window.location.replace('log_in.html');
+            return;
+        }
+
+        const statusEl = document.getElementById('profileStatus');
+        const saveBtn = document.getElementById('profileSaveBtn');
+        const payload = {
+            name: document.getElementById('profileName').value.trim(),
+            phone: document.getElementById('profilePhone').value.trim(),
+            address: document.getElementById('profileAddress').value.trim()
+        };
+
+        if (saveBtn) saveBtn.disabled = true;
+        if (statusEl) statusEl.textContent = 'Saving...';
+
+        try {
+            const response = await fetch('/api/member/profile', {
+                method: 'PUT',
+                cache: 'no-store',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                if (statusEl) statusEl.textContent = 'Saved';
+            } else {
+                if (response.status === 401) {
+                    clearLoginState();
+                    window.location.replace('log_in.html');
+                    return;
+                }
+                if (statusEl) statusEl.textContent = data.message || 'Save failed';
+            }
+        } catch (error) {
+            console.error('Save member profile failed:', error);
+            if (statusEl) statusEl.textContent = 'Save failed';
+        } finally {
+            if (saveBtn) saveBtn.disabled = false;
+        }
+    });
+}

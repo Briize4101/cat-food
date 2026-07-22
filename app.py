@@ -138,6 +138,53 @@ def check_auth():
     return jsonify({"loggedIn": False})
 
 
+@app.route('/api/member/profile', methods=['GET'])
+@jwt_required()
+def get_member_profile():
+    current_user = get_jwt_identity()
+
+    result = supabase.table("members") \
+        .select("id,email,name,phone,address,created_at") \
+        .eq("email", current_user) \
+        .limit(1) \
+        .execute()
+
+    if not result.data:
+        return jsonify({"success": False, "message": "找不到會員資料"}), 404
+
+    return jsonify({"success": True, "profile": result.data[0]})
+
+
+@app.route('/api/member/profile', methods=['PUT'])
+@jwt_required()
+def update_member_profile():
+    current_user = get_jwt_identity()
+    data = request.get_json() or {}
+
+    allowed_fields = ["name", "phone", "address"]
+    update_data = {
+        field: data.get(field)
+        for field in allowed_fields
+        if field in data
+    }
+
+    if not update_data:
+        return jsonify({"success": False, "message": "沒有可更新的會員資料"}), 400
+
+    try:
+        result = supabase.table("members") \
+            .update(update_data) \
+            .eq("email", current_user) \
+            .select("id,email,name,phone,address,created_at") \
+            .execute()
+    except Exception as error:
+        return jsonify({"success": False, "message": f"會員資料更新失敗：{error}"}), 500
+
+    if not result.data:
+        return jsonify({"success": False, "message": "找不到會員資料"}), 404
+
+    return jsonify({"success": True, "message": "會員資料已更新", "profile": result.data[0]})
+
 @app.route('/api/cat-food', methods=['GET'])
 def get_cat_food():
     fake_cat_food = {
@@ -153,3 +200,5 @@ def get_cat_food():
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
+
+
