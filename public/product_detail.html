@@ -1,0 +1,252 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Detail</title>
+    <link rel="stylesheet" href="./css/normalize.css">
+    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="./vendor/bootstrap-grid.css">
+    <link rel="stylesheet" href="./vendor/fontawesome-free-7.0.0-web/css/all.css">
+    <style>
+        .product-detail-page {
+            max-width: 1120px;
+            margin: 0 auto 80px;
+            padding: 48px 24px;
+        }
+
+        .product-detail-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 28px;
+            color: #333;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .product-detail-layout {
+            display: grid;
+            grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr);
+            gap: 56px;
+            align-items: start;
+        }
+
+        .product-detail-image-wrap {
+            background: #fffff0;
+            border-radius: 8px;
+            padding: 32px;
+        }
+
+        .product-detail-image-wrap img {
+            display: block;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            object-fit: contain;
+        }
+
+        .product-detail-info .feature {
+            display: inline-block;
+            margin-bottom: 16px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: #f2f0e8;
+            color: #333;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .product-detail-info h1 {
+            margin: 0 0 20px;
+            color: #272727;
+            font-size: 40px;
+            line-height: 1.15;
+            letter-spacing: 0;
+        }
+
+        .product-detail-meta {
+            display: grid;
+            gap: 14px;
+            margin: 28px 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .product-detail-meta li {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e6e1d3;
+            color: #333;
+        }
+
+        .product-detail-meta span:first-child {
+            color: #777;
+            font-weight: 700;
+        }
+
+        .product-detail-description {
+            color: #444;
+            font-size: 16px;
+            line-height: 1.9;
+        }
+
+        .product-detail-status {
+            min-height: 32px;
+            color: #333;
+            font-weight: 700;
+        }
+
+        .product-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-top: 28px;
+            flex-wrap: wrap;
+        }
+
+        .product-actions .btn {
+            width: auto;
+            min-width: 180px;
+            border: 0;
+            cursor: pointer;
+        }
+
+        .product-actions .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .cart-status {
+            color: #333;
+            font-weight: 700;
+        }
+
+        @media (max-width: 768px) {
+            .product-detail-page {
+                padding: 32px 18px 64px;
+            }
+
+            .product-detail-layout {
+                grid-template-columns: 1fr;
+                gap: 32px;
+            }
+
+            .product-detail-info h1 {
+                font-size: 30px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <header class="header">
+            <div class="announcement-bar">
+                <img src="https://uniam.jp/cdn/shop/t/37/assets/icon01.png?v=81928955142722445431683770454" alt="noimage">
+                <p id="test" style="padding: 0 12px; font-weight: 800;">
+                    Purchase over 10,000 yen (tax included) and receive up to 770 yen free shipping!
+                </p>
+            </div>
+            <div class="navbar">
+                <div class="container">
+                    <a href="#popup-menu" class="menu">
+                        <span></span>
+                        <span></span>
+                    </a>
+                    <div class="nav">
+                        <div class="nav-item">
+                            <a href="product_list.html" class="nav-link">Product List</a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="#" class="nav-link">Features of Uniam</a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="#" class="nav-link">For cats, click here</a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="#" class="nav-link">Development Story</a>
+                        </div>
+                    </div>
+                </div>
+                <a href="project.html" class="brand">
+                    <img src="https://uniam.jp/cdn/shop/files/header-uniam_logo.png?v=1693479467&width=200" alt="uniam" width="100" height="25.0" loading="eager" class="header__heading-logo" sizes="(min-width: 750px) 100px, 50vw">
+                </a>
+                <div class="icon">
+                    <a href="log_in.html" class="icon-link" id="memberLink">
+                        <i class="fa-solid fa-cat" style="font-size: 28px;"></i>
+                    </a>
+                    <a href="cart.html" class="icon-link">
+                        <i class="fa-solid fa-cart-shopping" style="font-size: 28px;"></i>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <div class="space"></div>
+
+        <main class="product-detail-page">
+            <a href="all_product.html" class="product-detail-back">
+                <i class="fa-solid fa-arrow-left"></i>
+                Back to products
+            </a>
+
+            <p id="productDetailStatus" class="product-detail-status">Loading product...</p>
+
+            <section id="productDetail" class="product-detail-layout" hidden>
+                <div class="product-detail-image-wrap">
+                    <img id="productImage" src="" alt="product image">
+                </div>
+                <div class="product-detail-info">
+                    <span id="productFeature" class="feature"></span>
+                    <h1 id="productName"></h1>
+                    <ul class="product-detail-meta">
+                        <li>
+                            <span>Category</span>
+                            <strong id="productCategory"></strong>
+                        </li>
+                        <li>
+                            <span>Price</span>
+                            <strong id="productPrice"></strong>
+                        </li>
+                        <li>
+                            <span>Stock</span>
+                            <strong id="productStock"></strong>
+                        </li>
+                    </ul>
+                    <p id="productDescription" class="product-detail-description"></p>
+                    <div class="product-actions">
+                        <button type="button" id="addToCartBtn" class="btn" disabled>Add to cart</button>
+                        <a href="cart.html" class="btn">View cart</a>
+                        <span id="cartStatus" class="cart-status"></span>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+
+<script>
+    const box = document.querySelector('.menu');
+    const menubg = document.querySelector('.menubg');
+    const cls = document.querySelector('.close');
+
+    if (box && menubg && cls) {
+        box.addEventListener('click', (e) => {
+            e.preventDefault();
+            menubg.classList.add('active');
+        });
+
+        cls.addEventListener('click', (e) => {
+            e.preventDefault();
+            menubg.classList.remove('active');
+        });
+    }
+</script>
+<script src="JS/auth.js?v=20260725"></script>
+<script src="JS/products.js?v=20260730b"></script>
+</html>
+
+
+

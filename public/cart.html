@@ -1,0 +1,214 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart</title>
+    <link rel="stylesheet" href="./css/normalize.css">
+    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="./vendor/bootstrap-grid.css">
+    <link rel="stylesheet" href="./vendor/fontawesome-free-7.0.0-web/css/all.css">
+    <style>
+        .cart-page {
+            max-width: 1040px;
+            margin: 0 auto 80px;
+            padding: 48px 24px;
+        }
+
+        .cart-page h1 {
+            margin: 0 0 28px;
+            color: #272727;
+            font-size: 38px;
+            letter-spacing: 0;
+        }
+
+        .cart-status {
+            min-height: 28px;
+            color: #333;
+            font-weight: 700;
+        }
+
+        .cart-list {
+            display: grid;
+            gap: 18px;
+            margin-top: 20px;
+        }
+
+        .cart-item {
+            display: grid;
+            grid-template-columns: 120px 1fr auto;
+            gap: 22px;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #e6e1d3;
+        }
+
+        .cart-item img {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+            background: #fffff0;
+            border-radius: 8px;
+        }
+
+        .cart-item h3 {
+            margin: 0 0 8px;
+            font-size: 22px;
+            letter-spacing: 0;
+        }
+
+        .cart-item p {
+            margin: 0 0 12px;
+            color: #555;
+            font-weight: 700;
+        }
+
+        .cart-item label {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            color: #555;
+            font-weight: 700;
+        }
+
+        .cart-item input {
+            width: 72px;
+            padding: 8px;
+            border: 1px solid #d8d2c4;
+            border-radius: 6px;
+        }
+
+        .cart-item-actions {
+            display: grid;
+            gap: 14px;
+            justify-items: end;
+        }
+
+        .cart-item-actions .btn,
+        .cart-summary .btn {
+            width: auto;
+            border: 0;
+            cursor: pointer;
+        }
+
+        .cart-summary {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 24px;
+            margin-top: 32px;
+            flex-wrap: wrap;
+        }
+
+        .cart-summary strong {
+            font-size: 22px;
+        }
+
+        .cart-empty {
+            margin-top: 24px;
+            color: #555;
+            font-weight: 700;
+        }
+
+        @media (max-width: 720px) {
+            .cart-page {
+                padding: 32px 18px 64px;
+            }
+
+            .cart-item {
+                grid-template-columns: 96px 1fr;
+            }
+
+            .cart-item img {
+                width: 96px;
+                height: 96px;
+            }
+
+            .cart-item-actions {
+                grid-column: 1 / -1;
+                justify-items: start;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <header class="header">
+            <div class="announcement-bar">
+                <img src="https://uniam.jp/cdn/shop/t/37/assets/icon01.png?v=81928955142722445431683770454" alt="noimage">
+                <p id="test" style="padding: 0 12px; font-weight: 800;">
+                    Purchase over 10,000 yen (tax included) and receive up to 770 yen free shipping!
+                </p>
+            </div>
+            <div class="navbar">
+                <div class="container">
+                    <a href="#popup-menu" class="menu">
+                        <span></span>
+                        <span></span>
+                    </a>
+                    <div class="nav">
+                        <div class="nav-item">
+                            <a href="product_list.html" class="nav-link">Product List</a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="#" class="nav-link">Features of Uniam</a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="#" class="nav-link">For cats, click here</a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="#" class="nav-link">Development Story</a>
+                        </div>
+                    </div>
+                </div>
+                <a href="project.html" class="brand">
+                    <img src="https://uniam.jp/cdn/shop/files/header-uniam_logo.png?v=1693479467&width=200" alt="uniam" width="100" height="25.0" loading="eager" class="header__heading-logo" sizes="(min-width: 750px) 100px, 50vw">
+                </a>
+                <div class="icon">
+                    <a href="log_in.html" class="icon-link" id="memberLink">
+                        <i class="fa-solid fa-cat" style="font-size: 28px;"></i>
+                    </a>
+                    <a href="cart.html" class="icon-link">
+                        <i class="fa-solid fa-cart-shopping" style="font-size: 28px;"></i>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <div class="space"></div>
+
+        <main id="cartPage" class="cart-page">
+            <h1>Shopping Cart</h1>
+            <p id="cartPageStatus" class="cart-status">Loading cart...</p>
+            <p id="cartEmpty" class="cart-empty" hidden>Your cart is empty.</p>
+            <div id="cartList" class="cart-list"></div>
+            <div class="cart-summary">
+                <span>Total: <strong id="cartTotal">JPY 0</strong></span>
+                <button type="button" id="clearCartBtn" class="btn">Clear cart</button>
+                <a href="all_product.html" class="btn">Continue shopping</a>
+            </div>
+        </main>
+    </div>
+</body>
+
+<script>
+    const box = document.querySelector('.menu');
+    const menubg = document.querySelector('.menubg');
+    const cls = document.querySelector('.close');
+
+    if (box && menubg && cls) {
+        box.addEventListener('click', (e) => {
+            e.preventDefault();
+            menubg.classList.add('active');
+        });
+
+        cls.addEventListener('click', (e) => {
+            e.preventDefault();
+            menubg.classList.remove('active');
+        });
+    }
+</script>
+<script src="JS/auth.js?v=20260730"></script>
+<script src="JS/cart.js?v=20260730"></script>
+</html>
