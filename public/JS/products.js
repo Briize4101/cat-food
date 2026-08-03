@@ -104,28 +104,44 @@
         });
     }
 
-    function createProductCard(product) {
+    function createProductCard(product, variant) {
         const detailUrl = `product_detail.html?id=${product.id}`;
         const card = document.createElement('div');
         card.className = 'product-col';
         card.dataset.productId = product.id;
         card.style.cursor = 'pointer';
-        card.innerHTML = `
-            <a href="${detailUrl}" class="img">
-                <img src="${product.image_url || ''}" alt="${product.name || 'product'}" style="background-color: #FFFFF0;">
-                <span class="feature">${product.feature || 'Product'}</span>
-            </a>
-            <div class="info">
-                <div class="product-name">${product.name || 'Product'}</div>
-                <div class="introduction">${product.description || ''}</div>
-                <div class="tags">
-                    <span class="room-tmpt">${product.category || 'product'}</span>
-                    <span class="free-shp">Stock ${product.stock ?? 0}</span>
+
+        if (variant === 'product-list') {
+            card.innerHTML = `
+                <a href="${detailUrl}" class="img">
+                    <img src="${product.image_url || ''}" alt="${product.name || 'product'}">
+                </a>
+                <div class="info">
+                    <div class="product-name">${product.name || 'Product'}</div>
+                    <div class="introduction">${product.description || ''}</div>
+                    <div class="introduction">Stock ${product.stock ?? 0} / ${formatPrice(product.price)}</div>
                 </div>
-                <p class="price">${formatPrice(product.price)}<span class="tax">/tax included~</span></p>
-            </div>
-            <a href="${detailUrl}" class="btn">View details</a>
-        `;
+                <a href="${detailUrl}" class="btn">View details</a>
+            `;
+        } else {
+            card.innerHTML = `
+                <a href="${detailUrl}" class="img">
+                    <img src="${product.image_url || ''}" alt="${product.name || 'product'}" style="background-color: #FFFFF0;">
+                    <span class="feature">${product.feature || 'Product'}</span>
+                </a>
+                <div class="info">
+                    <div class="product-name">${product.name || 'Product'}</div>
+                    <div class="introduction">${product.description || ''}</div>
+                    <div class="tags">
+                        <span class="room-tmpt">${product.category || 'product'}</span>
+                        <span class="free-shp">Stock ${product.stock ?? 0}</span>
+                    </div>
+                    <p class="price">${formatPrice(product.price)}<span class="tax">/tax included~</span></p>
+                </div>
+                <a href="${detailUrl}" class="btn">View details</a>
+            `;
+        }
+
         card.addEventListener('click', (event) => {
             if (event.target.closest('a')) return;
             window.location.href = detailUrl;
@@ -162,7 +178,7 @@
                 }
 
                 products.forEach((product) => {
-                    list.appendChild(createProductCard(product));
+                    list.appendChild(createProductCard(product, list.dataset.productsVariant));
                 });
             });
         } catch (error) {
@@ -252,3 +268,4 @@
         loadProductDetail();
     });
 })();
+

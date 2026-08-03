@@ -406,6 +406,132 @@ def clear_cart():
         return jsonify({"success": True, "items": [], "total": 0})
     except Exception as error:
         return jsonify({"success": False, "message": f"購物車清空失敗：{error}"}), 500
+ORDER_ITEM_FIELDS = "id,order_id,product_id,quantity,unit_price,line_total,created_at,products(id,name,image_url)"
+
+
+def format_order(order, items):
+    return {
+        "id": order.get("id"),
+        "member_id": order.get("member_id"),
+        "status": order.get("status"),
+        "total_amount": order.get("total_amount"),
+        "created_at": order.get("created_at"),
+        "updated_at": order.get("updated_at"),
+        "items": items
+    }
+
+
+@app.route('/api/orders', methods=['POST'])
+@jwt_required()
+def create_order():
+    member = get_current_member()
+    if not member:
+        return jsonify({"success": False, "message": "找不到會員資料"}), 404
+
+    data = request.get_json() or {}
+    product_ids = data.get("product_ids") or []
+
+    if not isinstance(product_ids, list) or not product_ids:
+        return jsonify({"success": False, "message": "請先選擇要結帳的商品"}), 400
+
+    try:
+        product_ids = [int(product_id) for product_id in product_ids]
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "商品格式錯誤"}), 400
+
+    try:
+        cart_result = supabase.table("cart_items") \
+            .select(CART_ITEM_FIELDS) \
+            .eq("member_id", member["id"]) \
+            .in_("product_id", product_ids) \
+            .execute()
+
+        cart_items = cart_result.data or []
+        if not cart_items:
+            return jsonify({"success": False, "message": "購物車內沒有選取的商品"}), 404
+
+        order_items = []
+        total_amount = 0
+
+        for cart_item in cart_items:
+            product = cart_item.get("products") or {}
+            if not product.get("is_active"):
+                return jsonify({"success": False, "message": "選取的商品包含未上架商品"}), 400
+
+            quantity = int(cart_item.get("quantity") or 1)
+            unit_price = int(product.get("price") or 0)
+            line_total = unit_price * quantity
+            total_amount += line_total
+            order_items.append({
+                "product_id": cart_item.get("product_id"),
+                "quantity": quantity,
+                "unit_price": unit_price,
+                "line_total": line_total
+            })
+
+        order_result = supabase.table("orders") \
+            .insert({
+                "member_id": member["id"],
+                "status": "pending_payment",
+                "total_amount": total_amount
+            }) \
+            .execute()
+
+        if not order_result.data:
+            return jsonify({"success": False, "message": "訂單建立失敗"}), 500
+
+        order = order_result.data[0]
+        for item in order_items:
+            item["order_id"] = order["id"]
+
+        item_result = supabase.table("order_items") \
+            .insert(order_items) \
+            .execute()
+
+        for product_id in product_ids:
+            supabase.table("cart_items") \
+                .delete() \
+                .eq("member_id", member["id"]) \
+                .eq("product_id", product_id) \
+                .execute()
+
+        order["items"] = item_result.data or []
+        cart = build_cart_response(member["id"])
+        return jsonify({
+            "success": True,
+            "message": "訂單已建立",
+            "order": order,
+            "cart": cart
+        })
+    except Exception as error:
+        return jsonify({"success": False, "message": f"訂單建立失敗：{error}"}), 500
+
+
+@app.route('/api/orders', methods=['GET'])
+@jwt_required()
+def get_orders():
+    member = get_current_member()
+    if not member:
+        return jsonify({"success": False, "message": "找不到會員資料"}), 404
+
+    try:
+        orders_result = supabase.table("orders") \
+            .select("id,member_id,status,total_amount,created_at,updated_at") \
+            .eq("member_id", member["id"]) \
+            .order("id", desc=True) \
+            .execute()
+
+        orders = orders_result.data or []
+        for order in orders:
+            items_result = supabase.table("order_items") \
+                .select(ORDER_ITEM_FIELDS) \
+                .eq("order_id", order["id"]) \
+                .execute()
+            order["items"] = items_result.data or []
+
+        return jsonify({"success": True, "orders": orders})
+    except Exception as error:
+        return jsonify({"success": False, "message": f"訂單讀取失敗：{error}"}), 500
 
 @app.route('/api/cat-food', methods=['GET'])
 def get_cat_food():
@@ -426,6 +552,8 @@ def get_cat_food():
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
+
+
 
 
 

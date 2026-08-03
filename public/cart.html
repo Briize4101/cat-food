@@ -36,7 +36,7 @@
 
         .cart-item {
             display: grid;
-            grid-template-columns: 120px 1fr auto;
+            grid-template-columns: 32px 120px 1fr auto;
             gap: 22px;
             align-items: center;
             padding: 20px 0;
@@ -69,6 +69,11 @@
             gap: 10px;
             color: #555;
             font-weight: 700;
+        }
+
+        .cart-item-select input {
+            width: 18px;
+            height: 18px;
         }
 
         .cart-item input {
@@ -116,7 +121,7 @@
             }
 
             .cart-item {
-                grid-template-columns: 96px 1fr;
+                grid-template-columns: 32px 96px 1fr;
             }
 
             .cart-item img {
@@ -184,7 +189,8 @@
             <p id="cartEmpty" class="cart-empty" hidden>Your cart is empty.</p>
             <div id="cartList" class="cart-list"></div>
             <div class="cart-summary">
-                <span>Total: <strong id="cartTotal">JPY 0</strong></span>
+                <span>Selected total: <strong id="cartTotal">JPY 0</strong></span>
+                <button type="button" id="checkoutBtn" class="btn">Checkout selected</button>
                 <button type="button" id="clearCartBtn" class="btn">Clear cart</button>
                 <a href="all_product.html" class="btn">Continue shopping</a>
             </div>
@@ -210,5 +216,8 @@
     }
 </script>
 <script src="JS/auth.js?v=20260730"></script>
-<script src="JS/cart.js?v=20260730"></script>
+<script src="JS/cart.js?v=20260803a"></script>
 </html>
+
+
+
