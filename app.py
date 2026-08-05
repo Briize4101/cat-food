@@ -1,4 +1,4 @@
-﻿from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory
 from datetime import datetime, timezone
 import os
 
@@ -24,7 +24,8 @@ def is_token_revoked(jwt_header, jwt_payload):
 
 PUBLIC_DIR = os.path.join(BASE_DIR, 'public')
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or SUPABASE_ANON_KEY
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise RuntimeError("請先在 .env 設定 SUPABASE_URL 和 SUPABASE_SERVICE_ROLE_KEY")
@@ -42,9 +43,9 @@ def init_db():
             "email": "123@test.com",
             "password_hash": generate_password_hash("123")
         }).execute()
-        print("成功建立測試會員：123@test.com / 123")
+        print("??撱箇?皜祈岫?嚗?23@test.com / 123")
     except Exception as error:
-        print(f"建立測試會員失敗，請確認 Supabase members table 是否已建立：{error}")
+        print(f"撱箇?皜祈岫?憭望?嚗?蝣箄? Supabase members table ?臬撌脣遣蝡?{error}")
 
 
 init_db()
@@ -98,7 +99,7 @@ def register():
     password = data.get('password')
 
     if not username or not password:
-        return jsonify({"success": False, "message": "請輸入完整的帳號密碼"})
+        return jsonify({"success": False, "message": "Please enter email and password"})
 
     try:
         supabase.table("members").insert({
@@ -106,12 +107,27 @@ def register():
             "password_hash": generate_password_hash(password)
         }).execute()
         success = True
-        message = "註冊成功"
+        message = "Register success"
     except Exception:
         success = False
-        message = "此 Email 已經被註冊過了！"
+        message = "This email is already registered"
 
     return jsonify({"success": success, "message": message})
+
+
+@app.route('/api/supabase-config', methods=['GET'])
+def get_supabase_config():
+    if not SUPABASE_ANON_KEY:
+        return jsonify({
+            "success": False,
+            "message": "Please set SUPABASE_ANON_KEY in .env"
+        }), 500
+
+    return jsonify({
+        "success": True,
+        "supabaseUrl": SUPABASE_URL,
+        "supabaseAnonKey": SUPABASE_ANON_KEY
+    })
 
 
 @app.route('/api/login', methods=['POST'])
@@ -132,7 +148,43 @@ def login():
         access_token = create_access_token(identity=username)
         return jsonify({"success": True, "token": access_token})
 
-    return jsonify({"success": False, "message": "帳號或密碼錯誤"})
+    return jsonify({"success": False, "message": "Invalid email or password"})
+
+
+@app.route('/api/auth/google', methods=['POST'])
+def google_login():
+    data = request.get_json() or {}
+    supabase_access_token = data.get('access_token')
+
+    if not supabase_access_token:
+        return jsonify({"success": False, "message": "Missing Google access token"}), 400
+
+    try:
+        auth_user = supabase.auth.get_user(supabase_access_token)
+        user = getattr(auth_user, "user", None)
+        email = getattr(user, "email", None) if user else None
+        metadata = getattr(user, "user_metadata", {}) if user else {}
+
+        if not email:
+            return jsonify({"success": False, "message": "Google account has no email"}), 400
+
+        existing = supabase.table("members") \
+            .select("id,email") \
+            .eq("email", email) \
+            .limit(1) \
+            .execute()
+
+        if not existing.data:
+            supabase.table("members").insert({
+                "email": email,
+                "password_hash": generate_password_hash(os.urandom(32).hex()),
+                "name": metadata.get("full_name") or metadata.get("name") or ""
+            }).execute()
+
+        access_token = create_access_token(identity=email)
+        return jsonify({"success": True, "token": access_token, "email": email})
+    except Exception as error:
+        return jsonify({"success": False, "message": f"Google login failed: {error}"}), 500
 
 
 @app.route('/api/logout', methods=['GET', 'POST'])
@@ -169,7 +221,7 @@ def get_member_profile():
         .execute()
 
     if not result.data:
-        return jsonify({"success": False, "message": "找不到會員資料"}), 404
+        return jsonify({"success": False, "message": "Member not found"}), 404
 
     return jsonify({"success": True, "profile": result.data[0]})
 
@@ -188,7 +240,7 @@ def update_member_profile():
     }
 
     if not update_data:
-        return jsonify({"success": False, "message": "沒有可更新的會員資料"}), 400
+        return jsonify({"success": False, "message": "No member data to update"}), 400
 
     try:
         result = supabase.table("members") \
@@ -197,12 +249,12 @@ def update_member_profile():
             .select("id,email,name,phone,address,created_at") \
             .execute()
     except Exception as error:
-        return jsonify({"success": False, "message": f"會員資料更新失敗：{error}"}), 500
+        return jsonify({"success": False, "message": f"Member profile update failed: {error}"}), 500
 
     if not result.data:
-        return jsonify({"success": False, "message": "找不到會員資料"}), 404
+        return jsonify({"success": False, "message": "Member not found"}), 404
 
-    return jsonify({"success": True, "message": "會員資料已更新", "profile": result.data[0]})
+    return jsonify({"success": True, "message": "Member profile updated", "profile": result.data[0]})
 
 PRODUCT_FIELDS = "id,name,description,category,feature,price,stock,image_url,is_active,created_at"
 
@@ -223,7 +275,7 @@ def get_products():
     try:
         result = query.execute()
     except Exception as error:
-        return jsonify({"success": False, "message": f"商品資料讀取失敗：{error}"}), 500
+        return jsonify({"success": False, "message": f"Product data load failed: {error}"}), 500
 
     return jsonify({"success": True, "products": result.data})
 
@@ -233,10 +285,10 @@ def get_product(product_id):
     try:
         result = supabase.table("products").select(PRODUCT_FIELDS).eq("id", product_id).limit(1).execute()
     except Exception as error:
-        return jsonify({"success": False, "message": f"商品資料讀取失敗：{error}"}), 500
+        return jsonify({"success": False, "message": f"Product data load failed: {error}"}), 500
 
     if not result.data:
-        return jsonify({"success": False, "message": "找不到商品資料"}), 404
+        return jsonify({"success": False, "message": "Product not found"}), 404
 
     return jsonify({"success": True, "product": result.data[0]})
 
@@ -277,12 +329,12 @@ def build_cart_response(member_id):
 def get_cart():
     member = get_current_member()
     if not member:
-        return jsonify({"success": False, "message": "找不到會員資料"}), 404
+        return jsonify({"success": False, "message": "Member not found"}), 404
 
     try:
         return jsonify(build_cart_response(member["id"]))
     except Exception as error:
-        return jsonify({"success": False, "message": f"購物車讀取失敗：{error}"}), 500
+        return jsonify({"success": False, "message": f"Cart load failed: {error}"}), 500
 
 
 @app.route('/api/cart/items', methods=['POST'])
@@ -290,7 +342,7 @@ def get_cart():
 def add_cart_item():
     member = get_current_member()
     if not member:
-        return jsonify({"success": False, "message": "找不到會員資料"}), 404
+        return jsonify({"success": False, "message": "Member not found"}), 404
 
     data = request.get_json() or {}
 
@@ -298,10 +350,10 @@ def add_cart_item():
         product_id = int(data.get("product_id"))
         quantity = int(data.get("quantity", 1))
     except (TypeError, ValueError):
-        return jsonify({"success": False, "message": "商品或數量格式錯誤"}), 400
+        return jsonify({"success": False, "message": "Product ID format is invalid"}), 400
 
     if quantity < 1:
-        return jsonify({"success": False, "message": "數量至少要是 1"}), 400
+        return jsonify({"success": False, "message": "Quantity must be at least 1"}), 400
 
     try:
         product_result = supabase.table("products") \
@@ -312,7 +364,7 @@ def add_cart_item():
             .execute()
 
         if not product_result.data:
-            return jsonify({"success": False, "message": "找不到可加入購物車的商品"}), 404
+            return jsonify({"success": False, "message": "Product cannot be added to cart"}), 404
 
         existing_result = supabase.table("cart_items") \
             .select("id,quantity") \
@@ -333,10 +385,10 @@ def add_cart_item():
                 .execute()
 
         cart = build_cart_response(member["id"])
-        cart["message"] = "已加入購物車"
+        cart["message"] = "Added to cart"
         return jsonify(cart)
     except Exception as error:
-        return jsonify({"success": False, "message": f"加入購物車失敗：{error}"}), 500
+        return jsonify({"success": False, "message": f"Add to cart failed: {error}"}), 500
 
 
 @app.route('/api/cart/items/<int:product_id>', methods=['PUT'])
@@ -344,17 +396,17 @@ def add_cart_item():
 def update_cart_item(product_id):
     member = get_current_member()
     if not member:
-        return jsonify({"success": False, "message": "找不到會員資料"}), 404
+        return jsonify({"success": False, "message": "Member not found"}), 404
 
     data = request.get_json() or {}
 
     try:
         quantity = int(data.get("quantity"))
     except (TypeError, ValueError):
-        return jsonify({"success": False, "message": "數量格式錯誤"}), 400
+        return jsonify({"success": False, "message": "Quantity format is invalid"}), 400
 
     if quantity < 1:
-        return jsonify({"success": False, "message": "數量至少要是 1"}), 400
+        return jsonify({"success": False, "message": "Quantity must be at least 1"}), 400
 
     try:
         result = supabase.table("cart_items") \
@@ -364,11 +416,11 @@ def update_cart_item(product_id):
             .execute()
 
         if not result.data:
-            return jsonify({"success": False, "message": "購物車內沒有這項商品"}), 404
+            return jsonify({"success": False, "message": "Cart item not found"}), 404
 
         return jsonify(build_cart_response(member["id"]))
     except Exception as error:
-        return jsonify({"success": False, "message": f"購物車更新失敗：{error}"}), 500
+        return jsonify({"success": False, "message": f"Cart update failed: {error}"}), 500
 
 
 @app.route('/api/cart/items/<int:product_id>', methods=['DELETE'])
@@ -376,7 +428,7 @@ def update_cart_item(product_id):
 def delete_cart_item(product_id):
     member = get_current_member()
     if not member:
-        return jsonify({"success": False, "message": "找不到會員資料"}), 404
+        return jsonify({"success": False, "message": "Member not found"}), 404
 
     try:
         supabase.table("cart_items") \
@@ -387,7 +439,7 @@ def delete_cart_item(product_id):
 
         return jsonify(build_cart_response(member["id"]))
     except Exception as error:
-        return jsonify({"success": False, "message": f"購物車刪除失敗：{error}"}), 500
+        return jsonify({"success": False, "message": f"Cart item delete failed: {error}"}), 500
 
 
 @app.route('/api/cart', methods=['DELETE'])
@@ -395,7 +447,7 @@ def delete_cart_item(product_id):
 def clear_cart():
     member = get_current_member()
     if not member:
-        return jsonify({"success": False, "message": "找不到會員資料"}), 404
+        return jsonify({"success": False, "message": "Member not found"}), 404
 
     try:
         supabase.table("cart_items") \
@@ -405,7 +457,7 @@ def clear_cart():
 
         return jsonify({"success": True, "items": [], "total": 0})
     except Exception as error:
-        return jsonify({"success": False, "message": f"購物車清空失敗：{error}"}), 500
+        return jsonify({"success": False, "message": f"Cart clear failed: {error}"}), 500
 ORDER_ITEM_FIELDS = "id,order_id,product_id,quantity,unit_price,line_total,created_at,products(id,name,image_url)"
 
 
@@ -426,18 +478,18 @@ def format_order(order, items):
 def create_order():
     member = get_current_member()
     if not member:
-        return jsonify({"success": False, "message": "找不到會員資料"}), 404
+        return jsonify({"success": False, "message": "Member not found"}), 404
 
     data = request.get_json() or {}
     product_ids = data.get("product_ids") or []
 
     if not isinstance(product_ids, list) or not product_ids:
-        return jsonify({"success": False, "message": "請先選擇要結帳的商品"}), 400
+        return jsonify({"success": False, "message": "Please choose products to checkout"}), 400
 
     try:
         product_ids = [int(product_id) for product_id in product_ids]
     except (TypeError, ValueError):
-        return jsonify({"success": False, "message": "商品格式錯誤"}), 400
+        return jsonify({"success": False, "message": "Product format is invalid"}), 400
 
     try:
         cart_result = supabase.table("cart_items") \
@@ -448,7 +500,7 @@ def create_order():
 
         cart_items = cart_result.data or []
         if not cart_items:
-            return jsonify({"success": False, "message": "購物車內沒有選取的商品"}), 404
+            return jsonify({"success": False, "message": "Selected cart items not found"}), 404
 
         order_items = []
         total_amount = 0
@@ -456,7 +508,7 @@ def create_order():
         for cart_item in cart_items:
             product = cart_item.get("products") or {}
             if not product.get("is_active"):
-                return jsonify({"success": False, "message": "選取的商品包含未上架商品"}), 400
+                return jsonify({"success": False, "message": "Selected product includes inactive product"}), 400
 
             quantity = int(cart_item.get("quantity") or 1)
             unit_price = int(product.get("price") or 0)
@@ -478,7 +530,7 @@ def create_order():
             .execute()
 
         if not order_result.data:
-            return jsonify({"success": False, "message": "訂單建立失敗"}), 500
+            return jsonify({"success": False, "message": "Order create failed"}), 500
 
         order = order_result.data[0]
         for item in order_items:
@@ -499,12 +551,12 @@ def create_order():
         cart = build_cart_response(member["id"])
         return jsonify({
             "success": True,
-            "message": "訂單已建立",
+            "message": "Order created",
             "order": order,
             "cart": cart
         })
     except Exception as error:
-        return jsonify({"success": False, "message": f"訂單建立失敗：{error}"}), 500
+        return jsonify({"success": False, "message": f"Order create failed: {error}"}), 500
 
 
 @app.route('/api/orders', methods=['GET'])
@@ -512,7 +564,7 @@ def create_order():
 def get_orders():
     member = get_current_member()
     if not member:
-        return jsonify({"success": False, "message": "找不到會員資料"}), 404
+        return jsonify({"success": False, "message": "Member not found"}), 404
 
     try:
         orders_result = supabase.table("orders") \
@@ -531,7 +583,7 @@ def get_orders():
 
         return jsonify({"success": True, "orders": orders})
     except Exception as error:
-        return jsonify({"success": False, "message": f"訂單讀取失敗：{error}"}), 500
+        return jsonify({"success": False, "message": f"Order load failed: {error}"}), 500
 
 @app.route('/api/cat-food', methods=['GET'])
 def get_cat_food():
@@ -542,10 +594,10 @@ def get_cat_food():
             .limit(1) \
             .execute()
     except Exception as error:
-        return jsonify({"success": False, "message": f"商品資料讀取失敗：{error}"}), 500
+        return jsonify({"success": False, "message": f"Product data load failed: {error}"}), 500
 
     if not result.data:
-        return jsonify({"success": False, "message": "目前沒有商品資料"}), 404
+        return jsonify({"success": False, "message": "No product data"}), 404
 
     return jsonify(result.data[0])
 

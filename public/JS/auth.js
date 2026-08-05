@@ -1,4 +1,4 @@
-﻿async function checkLoginStatus() {
+async function checkLoginStatus() {
     const token = localStorage.getItem('userToken');
 
     if (!token) {
@@ -38,6 +38,103 @@ function clearLoginState() {
     document.cookie = 'isLogin=; Max-Age=0; path=/;';
 }
 
+
+async function getSupabaseClient() {
+    if (!window.supabase) {
+        throw new Error('Supabase JS 尚未載入');
+    }
+
+    const response = await fetch('/api/supabase-config', { cache: 'no-store' });
+    const config = await response.json();
+
+    if (!response.ok || !config.success) {
+        throw new Error(config.message || 'Supabase 設定讀取失敗');
+    }
+
+    return window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+}
+
+async function finishGoogleLogin(session) {
+    if (!session || !session.access_token) {
+        return false;
+    }
+
+    const response = await fetch('/api/auth/google', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_token: session.access_token })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Google 登入失敗');
+    }
+
+    localStorage.setItem('userToken', data.token);
+    window.history.replaceState({}, document.title, 'log_in.html');
+    window.location.replace('member.html');
+    return true;
+}
+
+async function handleGoogleOAuthCallback() {
+    const currentPage = window.location.pathname.split('/').pop() || 'log_in.html';
+    const hasOAuthData = window.location.hash.includes('access_token') || window.location.search.includes('code=');
+
+    if (currentPage !== 'log_in.html' || !hasOAuthData) {
+        return false;
+    }
+
+    try {
+        const client = await getSupabaseClient();
+        let session = null;
+
+        if (window.location.search.includes('code=')) {
+            const exchangeResult = await client.auth.exchangeCodeForSession(window.location.href);
+            if (exchangeResult.error) {
+                throw exchangeResult.error;
+            }
+            session = exchangeResult.data ? exchangeResult.data.session : null;
+        } else {
+            const sessionResult = await client.auth.getSession();
+            session = sessionResult.data ? sessionResult.data.session : null;
+        }
+
+        return await finishGoogleLogin(session);
+    } catch (error) {
+        console.error('Google OAuth callback failed:', error);
+        clearLoginState();
+        alert(error.message || 'Google 登入失敗，請稍後再試');
+        return false;
+    }
+}
+
+function initGoogleLogin() {
+    const googleLoginBtn = document.getElementById('googleLoginBtn');
+    if (!googleLoginBtn) return;
+
+    googleLoginBtn.addEventListener('click', async function() {
+        googleLoginBtn.disabled = true;
+
+        try {
+            const client = await getSupabaseClient();
+            const redirectTo = `${window.location.origin}/log_in.html`;
+            const result = await client.auth.signInWithOAuth({
+                provider: 'google',
+                options: { redirectTo }
+            });
+
+            if (result.error) {
+                throw result.error;
+            }
+        } catch (error) {
+            console.error('Google login failed:', error);
+            alert(error.message || 'Google 登入失敗，請稍後再試');
+            googleLoginBtn.disabled = false;
+        }
+    });
+}
 function initLoginForm() {
     const loginForm = document.getElementById('loginForm');
     if (!loginForm) return;
@@ -110,9 +207,13 @@ function initLoginPageRedirect() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initMemberLink();
-    initLoginPageRedirect();
+    initGoogleLogin();
+    const handledGoogleLogin = await handleGoogleOAuthCallback();
+    if (!handledGoogleLogin) {
+        initLoginPageRedirect();
+    }
 });
 async function loadMemberProfile() {
     const token = localStorage.getItem('userToken');
