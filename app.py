@@ -326,10 +326,13 @@ def clean_product_payload(data, require_name=False):
         payload["price"] = int(data.get("price") or 0)
 
     if "stock" in data:
-        payload["stock"] = int(data.get("stock") or 0)
+        payload["stock"] = max(0, int(data.get("stock") or 0))
 
     if "is_active" in data:
         payload["is_active"] = bool(data.get("is_active"))
+
+    if payload.get("stock") == 0:
+        payload["is_active"] = False
 
     if require_name and not payload.get("name"):
         raise ValueError("Product name is required")
@@ -466,7 +469,7 @@ def add_cart_item():
 
     try:
         product_result = supabase.table("products") \
-            .select("id,is_active") \
+            .select("id,is_active,stock") \
             .eq("id", product_id) \
             .eq("is_active", True) \
             .limit(1) \
@@ -475,6 +478,15 @@ def add_cart_item():
         if not product_result.data:
             return jsonify({"success": False, "message": "Product cannot be added to cart"}), 404
 
+        product = product_result.data[0]
+        stock = int(product.get("stock") or 0)
+        if stock <= 0:
+            supabase.table("products") \
+                .update({"is_active": False, "stock": 0}) \
+                .eq("id", product_id) \
+                .execute()
+            return jsonify({"success": False, "message": "Product is out of stock"}), 400
+
         existing_result = supabase.table("cart_items") \
             .select("id,quantity") \
             .eq("member_id", member["id"]) \
@@ -482,10 +494,15 @@ def add_cart_item():
             .limit(1) \
             .execute()
 
+        current_quantity = existing_result.data[0]["quantity"] if existing_result.data else 0
+        next_quantity = current_quantity + quantity
+        if next_quantity > stock:
+            return jsonify({"success": False, "message": f"Only {stock} item(s) in stock"}), 400
+
         if existing_result.data:
             existing_item = existing_result.data[0]
             supabase.table("cart_items") \
-                .update({"quantity": existing_item["quantity"] + quantity, "updated_at": utc_now_iso()}) \
+                .update({"quantity": next_quantity, "updated_at": utc_now_iso()}) \
                 .eq("id", existing_item["id"]) \
                 .execute()
         else:
@@ -518,6 +535,27 @@ def update_cart_item(product_id):
         return jsonify({"success": False, "message": "Quantity must be at least 1"}), 400
 
     try:
+        product_result = supabase.table("products") \
+            .select("id,stock,is_active") \
+            .eq("id", product_id) \
+            .limit(1) \
+            .execute()
+
+        if not product_result.data:
+            return jsonify({"success": False, "message": "Product not found"}), 404
+
+        product = product_result.data[0]
+        stock = int(product.get("stock") or 0)
+        if stock <= 0:
+            supabase.table("products") \
+                .update({"is_active": False, "stock": 0}) \
+                .eq("id", product_id) \
+                .execute()
+            return jsonify({"success": False, "message": "Product is out of stock"}), 400
+
+        if quantity > stock:
+            return jsonify({"success": False, "message": f"Only {stock} item(s) in stock"}), 400
+
         result = supabase.table("cart_items") \
             .update({"quantity": quantity, "updated_at": utc_now_iso()}) \
             .eq("member_id", member["id"]) \

@@ -58,6 +58,57 @@ def utc_now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 
+def deactivate_product_if_out_of_stock(product_id, stock):
+    if stock <= 0:
+        supabase.table('products') \
+            .update({'stock': 0, 'is_active': False}) \
+            .eq('id', product_id) \
+            .execute()
+
+
+def apply_successful_payment_stock_update(order_id):
+    items_result = supabase.table('order_items') \
+        .select('product_id,quantity') \
+        .eq('order_id', order_id) \
+        .execute()
+
+    for item in items_result.data or []:
+        product_id = item.get('product_id')
+        quantity = int(item.get('quantity') or 0)
+        product_result = supabase.table('products') \
+            .select('id,stock') \
+            .eq('id', product_id) \
+            .limit(1) \
+            .execute()
+
+        if not product_result.data:
+            continue
+
+        current_stock = int(product_result.data[0].get('stock') or 0)
+        next_stock = max(0, current_stock - quantity)
+        supabase.table('products') \
+            .update({'stock': next_stock, 'is_active': next_stock > 0}) \
+            .eq('id', product_id) \
+            .execute()
+
+
+def remove_paid_order_items_from_cart(member_id, order_id):
+    items_result = supabase.table('order_items') \
+        .select('product_id') \
+        .eq('order_id', order_id) \
+        .execute()
+
+    for item in items_result.data or []:
+        product_id = item.get('product_id')
+        if product_id is None:
+            continue
+
+        supabase.table('cart_items') \
+            .delete() \
+            .eq('member_id', member_id) \
+            .eq('product_id', product_id) \
+            .execute()
+
 def get_current_member():
     current_user = get_jwt_identity()
     if not current_user:
@@ -221,6 +272,11 @@ def admin_update_order_status(order_id):
         return jsonify({'success': False, 'message': 'Order not found'}), 404
 
     try:
+        current_status = order.get('status')
+        if current_status != 'paid' and next_status == 'paid':
+            apply_successful_payment_stock_update(order_id)
+            remove_paid_order_items_from_cart(order['member_id'], order_id)
+
         result = supabase.table('orders') \
             .update({'status': next_status, 'updated_at': utc_now_iso()}) \
             .eq('id', order_id) \
@@ -269,10 +325,15 @@ def create_order():
 
         for cart_item in cart_items:
             product = cart_item.get('products') or {}
-            if not product.get('is_active'):
-                return jsonify({'success': False, 'message': '選取的商品包含未上架商品'}), 400
-
             quantity = int(cart_item.get('quantity') or 1)
+            stock = int(product.get('stock') or 0)
+            if not product.get('is_active') or stock <= 0:
+                deactivate_product_if_out_of_stock(cart_item.get('product_id'), stock)
+                return jsonify({'success': False, 'message': 'Selected product is not available'}), 400
+
+            if quantity > stock:
+                return jsonify({'success': False, 'message': f'Only {stock} item(s) in stock'}), 400
+
             unit_price = int(product.get('price') or 0)
             line_total = unit_price * quantity
             total_amount += line_total
@@ -302,12 +363,6 @@ def create_order():
             .insert(order_items) \
             .execute()
 
-        for product_id in product_ids:
-            supabase.table('cart_items') \
-                .delete() \
-                .eq('member_id', member['id']) \
-                .eq('product_id', product_id) \
-                .execute()
 
         order['items'] = item_result.data or []
         cart = build_cart_response(member['id'])
@@ -376,6 +431,10 @@ def update_order_status(order_id):
             'message': f'訂單狀態不能從 {current_status} 改成 {next_status}'
         }), 400
 
+    if current_status != 'paid' and next_status == 'paid':
+        apply_successful_payment_stock_update(order_id)
+        remove_paid_order_items_from_cart(member['id'], order_id)
+
     result = supabase.table('orders') \
         .update({'status': next_status, 'updated_at': utc_now_iso()}) \
         .eq('id', order_id) \
@@ -436,6 +495,10 @@ def mock_payment(order_id):
             'success': False,
             'message': f'訂單狀態不能從 {current_status} 改成 {next_status}'
         }), 400
+
+    if current_status != 'paid' and next_status == 'paid':
+        apply_successful_payment_stock_update(order_id)
+        remove_paid_order_items_from_cart(member['id'], order_id)
 
     result = supabase.table('orders') \
         .update({'status': next_status, 'updated_at': utc_now_iso()}) \

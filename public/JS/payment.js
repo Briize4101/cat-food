@@ -100,7 +100,14 @@
                 body: JSON.stringify({ result })
             });
             renderOrder(data.order);
-            setStatus(result === 'success' ? 'Payment success. Order is paid.' : 'Payment failed. Order is payment_failed.');
+            if (result === 'success') {
+                setStatus('Payment success. Returning to cart...');
+                window.setTimeout(() => {
+                    window.location.replace('cart.html');
+                }, 900);
+            } else {
+                setStatus('Payment failed. Order is payment_failed.');
+            }
         } catch (error) {
             setStatus(error.message || 'Payment failed', true);
             successBtn.disabled = false;
