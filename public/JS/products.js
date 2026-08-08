@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
     const PRODUCT_LINK_RULES = [
         { keywords: ['frozen fresh food'], id: 1 },
         { keywords: ['dry food', 'wild pro'], id: 2 },
@@ -50,7 +50,7 @@
         return true;
     }
 
-    async function addProductToCart(product) {
+    async function addProductToCart(product, quantity) {
         const token = localStorage.getItem('userToken');
         const response = await fetch('/api/cart/items', {
             method: 'POST',
@@ -61,7 +61,7 @@
             },
             body: JSON.stringify({
                 product_id: product.id,
-                quantity: 1
+                quantity
             })
         });
         const data = await response.json();
@@ -93,9 +93,16 @@
                 return;
             }
 
+            const quantityInput = document.getElementById('productQuantity');
+            const quantity = Math.max(1, Number(quantityInput ? quantityInput.value : 1));
+
+            if (quantityInput) {
+                quantityInput.value = quantity;
+            }
+
             try {
-                await addProductToCart(product);
-                if (cartStatus) cartStatus.textContent = '已加入購物車。';
+                await addProductToCart(product, quantity);
+                if (cartStatus) cartStatus.textContent = `Added ${quantity} item(s) to cart.`;
             } catch (error) {
                 if (cartStatus) cartStatus.textContent = error.message || '加入購物車失敗';
             } finally {

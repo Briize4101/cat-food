@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -104,6 +104,22 @@
             gap: 16px;
             margin-top: 28px;
             flex-wrap: wrap;
+        }
+
+        .product-quantity {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .product-quantity input {
+            width: 86px;
+            min-height: 42px;
+            padding: 8px 10px;
+            border: 1px solid #d8d0c3;
+            font: inherit;
         }
 
         .product-actions .btn {
@@ -217,6 +233,10 @@
                     </ul>
                     <p id="productDescription" class="product-detail-description"></p>
                     <div class="product-actions">
+                        <label class="product-quantity">
+                            Quantity
+                            <input type="number" id="productQuantity" min="1" value="1">
+                        </label>
                         <button type="button" id="addToCartBtn" class="btn" disabled>Add to cart</button>
                         <a href="cart.html" class="btn">View cart</a>
                         <span id="cartStatus" class="cart-status"></span>
@@ -245,7 +265,7 @@
     }
 </script>
 <script src="JS/auth.js?v=20260725"></script>
-<script src="JS/products.js?v=20260803a"></script>
+<script src="JS/products.js?v=20260808-qty"></script>
 </html>
 
 
