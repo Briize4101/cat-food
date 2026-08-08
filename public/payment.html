@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment</title>
+    <link rel="stylesheet" href="./css/normalize.css">
+    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="./vendor/bootstrap-grid.css">
+    <style>
+        body { background: #f7f3ed; }
+        .payment-page {
+            width: min(840px, calc(100% - 32px));
+            margin: 60px auto;
+            padding: 28px;
+            background: #fff;
+            border: 1px solid #e2d8cc;
+        }
+        .payment-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: flex-start;
+            border-bottom: 1px solid #e2d8cc;
+            padding-bottom: 18px;
+            margin-bottom: 18px;
+        }
+        .payment-header h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: 0; }
+        .payment-muted { color: #746b60; }
+        .payment-status {
+            min-height: 24px;
+            margin: 16px 0;
+            color: #746b60;
+        }
+        .payment-items { display: grid; gap: 10px; margin: 18px 0; }
+        .payment-item {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee6dc;
+        }
+        .payment-total {
+            display: flex;
+            justify-content: space-between;
+            font-size: 20px;
+            font-weight: 800;
+            margin: 22px 0;
+        }
+        .payment-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+        .payment-actions .btn { border: 0; cursor: pointer; }
+        .payment-actions .secondary { background: #8f3d3d; }
+        @media (max-width: 640px) {
+            .payment-page { margin: 24px auto; padding: 18px; }
+            .payment-header { flex-direction: column; }
+            .payment-item { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <main class="payment-page" id="paymentPage">
+        <section class="payment-header">
+            <div>
+                <h1>Mock Payment</h1>
+                <div class="payment-muted">Complete the simulated payment for your order.</div>
+            </div>
+            <a href="cart.html" class="btn">Back to cart</a>
+        </section>
+
+        <div id="paymentStatus" class="payment-status">Loading order...</div>
+        <section id="paymentDetail" hidden>
+            <div><strong>Order ID:</strong> <span id="paymentOrderId"></span></div>
+            <div><strong>Status:</strong> <span id="paymentOrderStatus"></span></div>
+            <div class="payment-items" id="paymentItems"></div>
+            <div class="payment-total">
+                <span>Total</span>
+                <span id="paymentTotal"></span>
+            </div>
+            <div class="payment-actions">
+                <button type="button" class="btn" id="paymentSuccessBtn">Simulate payment success</button>
+                <button type="button" class="btn secondary" id="paymentFailBtn">Simulate payment failed</button>
+            </div>
+        </section>
+    </main>
+
+    <script src="JS/auth.js?v=20260805-google"></script>
+    <script src="JS/payment.js?v=20260808"></script>
+</body>
+</html>

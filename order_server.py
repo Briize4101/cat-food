@@ -1,8 +1,8 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
 import os
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_jwt_extended import JWTManager, get_jwt_identity, jwt_required
 from supabase import create_client
 
@@ -13,8 +13,10 @@ app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'change-this-in-env')
 jwt = JWTManager(app)
 
+PUBLIC_DIR = os.path.join(BASE_DIR, 'public')
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY') or os.getenv('SUPABASE_ANON_KEY')
+ORDER_ADMIN_PASSWORD = os.getenv('ORDER_ADMIN_PASSWORD')
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise RuntimeError('請先在 .env 設定 SUPABASE_URL 和 SUPABASE_SERVICE_ROLE_KEY')
@@ -122,6 +124,115 @@ def can_change_status(current_status, next_status):
     if next_status not in VALID_ORDER_STATUSES:
         return False
     return next_status in ALLOWED_STATUS_TRANSITIONS.get(current_status, set())
+
+def require_admin_password():
+    if not ORDER_ADMIN_PASSWORD:
+        return False, jsonify({
+            'success': False,
+            'message': 'Please set ORDER_ADMIN_PASSWORD in .env'
+        }), 500
+
+    provided_password = request.headers.get('X-Admin-Password')
+    if provided_password != ORDER_ADMIN_PASSWORD:
+        return False, jsonify({'success': False, 'message': 'Invalid admin password'}), 401
+
+    return True, None, None
+
+
+def get_admin_order(order_id):
+    result = supabase.table('orders') \
+        .select('id,member_id,status,total_amount,created_at,updated_at') \
+        .eq('id', order_id) \
+        .limit(1) \
+        .execute()
+
+    return result.data[0] if result.data else None
+
+
+def attach_member(order):
+    member_result = supabase.table('members') \
+        .select('id,email,name') \
+        .eq('id', order['member_id']) \
+        .limit(1) \
+        .execute()
+
+    order['member'] = member_result.data[0] if member_result.data else None
+    return order
+
+
+@app.route('/')
+def order_admin_home():
+    return send_from_directory(PUBLIC_DIR, 'order_admin.html')
+
+
+@app.route('/admin/orders')
+def order_admin_page():
+    return send_from_directory(PUBLIC_DIR, 'order_admin.html')
+
+
+@app.route('/JS/<path:path>')
+def order_admin_js(path):
+    return send_from_directory(os.path.join(PUBLIC_DIR, 'JS'), path)
+
+
+@app.route('/api/admin/orders', methods=['GET'])
+def admin_get_orders():
+    is_allowed, response, status_code = require_admin_password()
+    if not is_allowed:
+        return response, status_code
+
+    status = request.args.get('status')
+
+    if status and status not in VALID_ORDER_STATUSES:
+        return jsonify({'success': False, 'message': 'Invalid order status'}), 400
+
+    try:
+        query = supabase.table('orders') \
+            .select('id,member_id,status,total_amount,created_at,updated_at') \
+            .order('id', desc=True)
+
+        if status:
+            query = query.eq('status', status)
+
+        orders_result = query.execute()
+        orders = []
+        for order in orders_result.data or []:
+            orders.append(attach_member(attach_order_items(order)))
+
+        return jsonify({'success': True, 'orders': orders})
+    except Exception as error:
+        return jsonify({'success': False, 'message': f'Admin order load failed: {error}'}), 500
+
+
+@app.route('/api/admin/orders/<int:order_id>/status', methods=['PUT'])
+def admin_update_order_status(order_id):
+    is_allowed, response, status_code = require_admin_password()
+    if not is_allowed:
+        return response, status_code
+
+    data = request.get_json() or {}
+    next_status = data.get('status')
+
+    if next_status not in VALID_ORDER_STATUSES:
+        return jsonify({'success': False, 'message': 'Invalid order status'}), 400
+
+    order = get_admin_order(order_id)
+    if not order:
+        return jsonify({'success': False, 'message': 'Order not found'}), 404
+
+    try:
+        result = supabase.table('orders') \
+            .update({'status': next_status, 'updated_at': utc_now_iso()}) \
+            .eq('id', order_id) \
+            .execute()
+
+        if not result.data:
+            return jsonify({'success': False, 'message': 'Order update failed'}), 500
+
+        updated_order = attach_member(attach_order_items(result.data[0]))
+        return jsonify({'success': True, 'order': updated_order})
+    except Exception as error:
+        return jsonify({'success': False, 'message': f'Admin order update failed: {error}'}), 500
 
 
 @app.route('/api/orders', methods=['POST'])

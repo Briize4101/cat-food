@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Admin</title>
+    <style>
+        :root { --bg: #f6f4ef; --panel: #fff; --ink: #252525; --muted: #6f6a62; --line: #ddd6cc; --accent: #2f6f73; --danger: #9d2f2f; }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: Arial, sans-serif; background: var(--bg); color: var(--ink); }
+        .shell { width: min(1160px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 48px; }
+        header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; border-bottom: 1px solid var(--line); padding-bottom: 18px; margin-bottom: 20px; }
+        h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: 0; }
+        h2 { font-size: 18px; margin: 0 0 14px; }
+        .muted { color: var(--muted); }
+        .grid { display: grid; grid-template-columns: 360px 1fr; gap: 18px; align-items: start; }
+        .panel { background: var(--panel); border: 1px solid var(--line); padding: 18px; }
+        label { display: grid; gap: 6px; margin-bottom: 12px; font-size: 14px; font-weight: 700; }
+        input, textarea, select { width: 100%; min-height: 38px; border: 1px solid var(--line); padding: 8px 10px; font: inherit; background: #fff; }
+        textarea { min-height: 88px; resize: vertical; }
+        .check-row { display: flex; gap: 8px; align-items: center; margin: 8px 0 16px; font-weight: 700; }
+        .check-row input { width: auto; min-height: auto; }
+        button { min-height: 38px; border: 1px solid var(--accent); background: var(--accent); color: #fff; padding: 8px 12px; font-weight: 800; cursor: pointer; }
+        button.secondary { background: #fff; color: var(--ink); border-color: var(--line); }
+        button:disabled { opacity: .55; cursor: not-allowed; }
+        .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .status { min-height: 24px; margin-bottom: 14px; color: var(--muted); }
+        .status.error { color: var(--danger); }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; min-width: 780px; border-collapse: collapse; }
+        th, td { border-bottom: 1px solid var(--line); padding: 10px; text-align: left; vertical-align: top; font-size: 14px; }
+        th { background: #eee8df; font-size: 13px; text-transform: uppercase; color: #4f4942; }
+        .thumb { width: 54px; height: 54px; object-fit: cover; background: #eee; }
+        .badge { display: inline-block; padding: 4px 8px; border: 1px solid var(--line); font-weight: 800; }
+        @media (max-width: 860px) { header { flex-direction: column; align-items: flex-start; } .grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <header>
+            <div>
+                <h1>Product Admin</h1>
+                <div class="muted">Create and update products in Supabase.</div>
+            </div>
+            <div class="actions">
+                <a href="http://127.0.0.1:5001/admin/orders">Order Admin</a>
+                <button type="button" id="refreshProductsBtn">Refresh</button>
+            </div>
+        </header>
+
+        <div id="productAdminStatus" class="status">Loading products...</div>
+
+        <section class="grid">
+            <form class="panel" id="productForm">
+                <h2 id="formTitle">New Product</h2>
+                <input type="hidden" id="productId">
+                <label>Name<input type="text" id="productName" required></label>
+                <label>Category<input type="text" id="productCategory" placeholder="food"></label>
+                <label>Feature<input type="text" id="productFeature"></label>
+                <label>Price<input type="number" id="productPrice" min="0" step="1" value="0"></label>
+                <label>Stock<input type="number" id="productStock" min="0" step="1" value="0"></label>
+                <label>Image URL<input type="url" id="productImageUrl"></label>
+                <label>Description<textarea id="productDescription"></textarea></label>
+                <div class="check-row"><input type="checkbox" id="productActive" checked><span>Active / listed</span></div>
+                <div class="actions">
+                    <button type="submit" id="saveProductBtn">Save product</button>
+                    <button type="button" class="secondary" id="newProductBtn">New</button>
+                </div>
+            </form>
+
+            <section class="panel table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Image</th>
+                            <th>Name</th>
+                            <th>Price</th>
+                            <th>Stock</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsBody"></tbody>
+                </table>
+            </section>
+        </section>
+    </main>
+
+    <script src="/JS/product_admin.js?v=20260808"></script>
+</body>
+</html>

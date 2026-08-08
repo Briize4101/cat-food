@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
     let cartItems = [];
     const selectedProductIds = new Set();
     const ORDER_API_BASE = 'http://127.0.0.1:5001';
@@ -201,7 +201,8 @@
                     });
                     selectedProductIds.clear();
                     applyCartResponse(data.cart || { items: [], total: 0 });
-                    if (status) status.textContent = `訂單已建立，訂單編號：${data.order.id}`;
+                    if (status) status.textContent = `Order created: #${data.order.id}`;
+                    window.location.href = `payment.html?id=${data.order.id}`;
                 } catch (error) {
                     if (status) status.textContent = error.message || '訂單建立失敗';
                 } finally {

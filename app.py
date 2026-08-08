@@ -26,6 +26,7 @@ PUBLIC_DIR = os.path.join(BASE_DIR, 'public')
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or SUPABASE_ANON_KEY
+ORDER_ADMIN_PASSWORD = os.getenv("ORDER_ADMIN_PASSWORD")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise RuntimeError("請先在 .env 設定 SUPABASE_URL 和 SUPABASE_SERVICE_ROLE_KEY")
@@ -69,6 +70,20 @@ def utc_now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 
+def require_admin_password():
+    if not ORDER_ADMIN_PASSWORD:
+        return False, jsonify({
+            "success": False,
+            "message": "Please set ORDER_ADMIN_PASSWORD in .env"
+        }), 500
+
+    provided_password = request.headers.get("X-Admin-Password")
+    if provided_password != ORDER_ADMIN_PASSWORD:
+        return False, jsonify({"success": False, "message": "Invalid admin password"}), 401
+
+    return True, None, None
+
+
 @app.after_request
 def add_no_cache_headers(response):
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
@@ -85,6 +100,11 @@ def home():
 @app.route('/member.html')
 def member_page():
     return send_from_directory(PUBLIC_DIR, 'member.html')
+
+
+@app.route('/admin/products')
+def product_admin_page():
+    return send_from_directory(PUBLIC_DIR, 'product_admin.html')
 
 
 @app.route('/<path:path>')
@@ -291,6 +311,95 @@ def get_product(product_id):
         return jsonify({"success": False, "message": "Product not found"}), 404
 
     return jsonify({"success": True, "product": result.data[0]})
+
+PRODUCT_ADMIN_FIELDS = ["name", "description", "category", "feature", "price", "stock", "image_url", "is_active"]
+
+
+def clean_product_payload(data, require_name=False):
+    payload = {}
+
+    for field in ["name", "description", "category", "feature", "image_url"]:
+        if field in data:
+            payload[field] = (data.get(field) or "").strip()
+
+    if "price" in data:
+        payload["price"] = int(data.get("price") or 0)
+
+    if "stock" in data:
+        payload["stock"] = int(data.get("stock") or 0)
+
+    if "is_active" in data:
+        payload["is_active"] = bool(data.get("is_active"))
+
+    if require_name and not payload.get("name"):
+        raise ValueError("Product name is required")
+
+    return payload
+
+
+@app.route('/api/admin/products', methods=['GET'])
+def admin_get_products():
+    is_allowed, response, status_code = require_admin_password()
+    if not is_allowed:
+        return response, status_code
+
+    try:
+        result = supabase.table("products") \
+            .select(PRODUCT_FIELDS) \
+            .order("id") \
+            .execute()
+        return jsonify({"success": True, "products": result.data or []})
+    except Exception as error:
+        return jsonify({"success": False, "message": f"Admin product load failed: {error}"}), 500
+
+
+@app.route('/api/admin/products', methods=['POST'])
+def admin_create_product():
+    is_allowed, response, status_code = require_admin_password()
+    if not is_allowed:
+        return response, status_code
+
+    try:
+        payload = clean_product_payload(request.get_json() or {}, require_name=True)
+        result = supabase.table("products") \
+            .insert(payload) \
+            .execute()
+
+        if not result.data:
+            return jsonify({"success": False, "message": "Product create failed"}), 500
+
+        return jsonify({"success": True, "product": result.data[0]})
+    except ValueError as error:
+        return jsonify({"success": False, "message": str(error)}), 400
+    except Exception as error:
+        return jsonify({"success": False, "message": f"Admin product create failed: {error}"}), 500
+
+
+@app.route('/api/admin/products/<int:product_id>', methods=['PUT'])
+def admin_update_product(product_id):
+    is_allowed, response, status_code = require_admin_password()
+    if not is_allowed:
+        return response, status_code
+
+    try:
+        payload = clean_product_payload(request.get_json() or {})
+        if not payload:
+            return jsonify({"success": False, "message": "No product data to update"}), 400
+
+        result = supabase.table("products") \
+            .update(payload) \
+            .eq("id", product_id) \
+            .execute()
+
+        if not result.data:
+            return jsonify({"success": False, "message": "Product not found"}), 404
+
+        return jsonify({"success": True, "product": result.data[0]})
+    except ValueError as error:
+        return jsonify({"success": False, "message": str(error)}), 400
+    except Exception as error:
+        return jsonify({"success": False, "message": f"Admin product update failed: {error}"}), 500
+
 
 CART_ITEM_FIELDS = "id,product_id,quantity,created_at,updated_at,products(id,name,price,image_url,stock,is_active)"
 
