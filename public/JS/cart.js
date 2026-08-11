@@ -1,5 +1,6 @@
-(function () {
+﻿(function () {
     let cartItems = [];
+    let unpaidOrders = [];
     const selectedProductIds = new Set();
     const ORDER_API_BASE = 'http://127.0.0.1:5001';
 
@@ -10,6 +11,13 @@
     function formatPrice(price) {
         const numberPrice = Number(price || 0);
         return `JPY ${numberPrice.toLocaleString('en-US')}`;
+    }
+
+    function formatDate(value) {
+        if (!value) return '';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleString();
     }
 
     function authHeaders() {
@@ -63,31 +71,63 @@
 
     async function ensureLoggedIn() {
         const token = getToken();
-        if (!token) {
-            return false;
-        }
+        if (!token) return false;
         if (typeof checkLoginStatus === 'function') {
             return checkLoginStatus();
         }
         return true;
     }
 
-    async function requestCart(url, options) {
+    async function requestCart(url, options = {}) {
         const response = await fetch(url, {
             cache: 'no-store',
             ...options,
             headers: {
                 ...authHeaders(),
-                ...(options && options.headers ? options.headers : {})
+                ...(options.headers || {})
             }
         });
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-            throw new Error(data.message || '資料處理失敗');
+            throw new Error(data.message || 'Request failed');
         }
 
         return data;
+    }
+
+    async function loadUnpaidOrders() {
+        const data = await requestCart(`${ORDER_API_BASE}/api/orders`, { method: 'GET' });
+        unpaidOrders = (data.orders || []).filter((order) => (
+            order.status === 'pending_payment' || order.status === 'payment_failed'
+        ));
+        renderUnpaidOrders();
+    }
+
+    function renderUnpaidOrders() {
+        const section = document.getElementById('unpaidOrders');
+        const list = document.getElementById('unpaidOrdersList');
+        if (!section || !list) return;
+
+        if (!unpaidOrders.length) {
+            section.hidden = true;
+            list.innerHTML = '';
+            return;
+        }
+
+        section.hidden = false;
+        list.innerHTML = unpaidOrders.map((order) => `
+            <div class="unpaid-order">
+                <div>
+                    <strong>Order #${order.id} - ${formatPrice(order.total_amount)}</strong>
+                    <span>${order.status} ${formatDate(order.created_at)}</span>
+                </div>
+                <div class="unpaid-order-actions">
+                    <a class="btn" href="payment.html?id=${order.id}">Continue payment</a>
+                    <button type="button" class="btn secondary" data-order-cancel="${order.id}">Cancel order</button>
+                </div>
+            </div>
+        `).join('');
     }
 
     async function loadCart() {
@@ -103,9 +143,7 @@
         const total = document.getElementById('cartTotal');
         const checkoutButton = document.getElementById('checkoutBtn');
 
-        if (!list || !empty || !total) {
-            return;
-        }
+        if (!list || !empty || !total) return;
 
         list.innerHTML = '';
 
@@ -132,7 +170,30 @@
         const list = document.getElementById('cartList');
         const clearButton = document.getElementById('clearCartBtn');
         const checkoutButton = document.getElementById('checkoutBtn');
+        const unpaidOrdersList = document.getElementById('unpaidOrdersList');
         const status = document.getElementById('cartPageStatus');
+
+        if (unpaidOrdersList) {
+            unpaidOrdersList.addEventListener('click', async (event) => {
+                const button = event.target.closest('[data-order-cancel]');
+                if (!button) return;
+
+                const orderId = button.dataset.orderCancel;
+                const confirmed = window.confirm(`Cancel order #${orderId}?`);
+                if (!confirmed) return;
+
+                try {
+                    button.disabled = true;
+                    if (status) status.textContent = `Cancelling order #${orderId}...`;
+                    await requestCart(`${ORDER_API_BASE}/api/orders/${orderId}/cancel`, { method: 'POST' });
+                    await loadUnpaidOrders();
+                    if (status) status.textContent = `Order #${orderId} cancelled.`;
+                } catch (error) {
+                    if (status) status.textContent = error.message || 'Cancel order failed';
+                    button.disabled = false;
+                }
+            });
+        }
 
         if (list) {
             list.addEventListener('change', async (event) => {
@@ -163,7 +224,7 @@
                     applyCartResponse(data);
                     if (status) status.textContent = '';
                 } catch (error) {
-                    if (status) status.textContent = error.message || '購物車更新失敗';
+                    if (status) status.textContent = error.message || 'Quantity update failed';
                 }
             });
 
@@ -180,7 +241,7 @@
                     applyCartResponse(data);
                     if (status) status.textContent = '';
                 } catch (error) {
-                    if (status) status.textContent = error.message || '購物車刪除失敗';
+                    if (status) status.textContent = error.message || 'Remove item failed';
                 }
             });
         }
@@ -188,7 +249,7 @@
         if (checkoutButton) {
             checkoutButton.addEventListener('click', async () => {
                 if (selectedProductIds.size === 0) {
-                    if (status) status.textContent = '請先選擇要結帳的商品。';
+                    if (status) status.textContent = 'Please select at least one product';
                     return;
                 }
 
@@ -204,8 +265,7 @@
                     if (status) status.textContent = `Order created: #${data.order.id}`;
                     window.location.href = `payment.html?id=${data.order.id}`;
                 } catch (error) {
-                    if (status) status.textContent = error.message || '訂單建立失敗';
-                } finally {
+                    if (status) status.textContent = error.message || 'Order creation failed';
                     checkoutButton.disabled = selectedProductIds.size === 0;
                 }
             });
@@ -220,7 +280,7 @@
                     applyCartResponse(data);
                     if (status) status.textContent = '';
                 } catch (error) {
-                    if (status) status.textContent = error.message || '購物車清空失敗';
+                    if (status) status.textContent = error.message || 'Clear cart failed';
                 }
             });
         }
@@ -233,7 +293,7 @@
 
         const isLoggedIn = await ensureLoggedIn();
         if (!isLoggedIn) {
-            if (status) status.textContent = '請先登入後再查看購物車。';
+            if (status) status.textContent = 'Please login before opening cart';
             window.location.href = 'log_in.html';
             return;
         }
@@ -241,13 +301,11 @@
         initCartActions();
 
         try {
+            await loadUnpaidOrders();
             await loadCart();
             if (status) status.textContent = '';
         } catch (error) {
-            if (status) status.textContent = error.message || '購物車讀取失敗';
+            if (status) status.textContent = error.message || 'Cart load failed';
         }
     });
 })();
-
-
-

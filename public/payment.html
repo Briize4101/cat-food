@@ -40,6 +40,35 @@
             padding: 12px 0;
             border-bottom: 1px solid #eee6dc;
         }
+        .recipient-details {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+            margin: 20px 0;
+            padding: 18px 0;
+            border-top: 1px solid #eee6dc;
+            border-bottom: 1px solid #eee6dc;
+        }
+        .recipient-details label {
+            display: grid;
+            gap: 8px;
+            color: #4f463d;
+            font-weight: 700;
+        }
+        .recipient-details input,
+        .recipient-details textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d8d0c3;
+            border-radius: 6px;
+            font: inherit;
+            background: #fff;
+        }
+        .recipient-details textarea {
+            min-height: 86px;
+            resize: vertical;
+        }
+
         .payment-total {
             display: flex;
             justify-content: space-between;
@@ -54,6 +83,7 @@
             .payment-page { margin: 24px auto; padding: 18px; }
             .payment-header { flex-direction: column; }
             .payment-item { grid-template-columns: 1fr; }
+            .recipient-details { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -72,6 +102,16 @@
             <div><strong>Order ID:</strong> <span id="paymentOrderId"></span></div>
             <div><strong>Status:</strong> <span id="paymentOrderStatus"></span></div>
             <div class="payment-items" id="paymentItems"></div>
+            <section class="recipient-details" aria-label="Recipient details">
+                <label>
+                    Recipient name
+                    <input type="text" id="paymentRecipientName" autocomplete="name" required>
+                </label>
+                <label>
+                    Recipient address
+                    <textarea id="paymentRecipientAddress" autocomplete="street-address" required></textarea>
+                </label>
+            </section>
             <div class="payment-total">
                 <span>Total</span>
                 <span id="paymentTotal"></span>
@@ -84,6 +124,6 @@
     </main>
 
     <script src="JS/auth.js?v=20260805-google"></script>
-    <script src="JS/payment.js?v=20260808"></script>
+    <script src="JS/payment.js?v=20260811-payment-retry"></script>
 </body>
 </html>

@@ -71,7 +71,7 @@ function renderOrders() {
     const visibleOrders = filter ? orders.filter(order => order.status === filter) : orders;
 
     if (!visibleOrders.length) {
-        ordersBody.innerHTML = '<tr><td colspan="7">No orders found.</td></tr>';
+        ordersBody.innerHTML = '<tr><td colspan="8">No orders found.</td></tr>';
         return;
     }
 
@@ -92,6 +92,7 @@ function renderOrders() {
             <tr>
                 <td><span class="order-id">#${order.id}</span><br><span class="muted">${formatDate(order.created_at)}</span></td>
                 <td>${member.email || `Member #${order.member_id}`}<br><span class="muted">${member.name || ''}</span></td>
+                <td>${order.recipient_name || '-'}<br><span class="muted">${order.recipient_address || '-'}</span></td>
                 <td><div class="items">${items}</div></td>
                 <td>${formatMoney(order.total_amount)}</td>
                 <td><span class="badge">${order.status}</span></td>

@@ -24,6 +24,7 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 CART_ITEM_FIELDS = 'id,product_id,quantity,created_at,updated_at,products(id,name,price,image_url,stock,is_active)'
+ORDER_FIELDS = 'id,member_id,status,total_amount,recipient_name,recipient_address,created_at,updated_at'
 ORDER_ITEM_FIELDS = 'id,order_id,product_id,quantity,unit_price,line_total,created_at,products(id,name,image_url)'
 VALID_ORDER_STATUSES = {
     'pending_payment',
@@ -36,8 +37,8 @@ VALID_ORDER_STATUSES = {
 }
 ALLOWED_STATUS_TRANSITIONS = {
     'pending_payment': {'paid', 'payment_failed', 'cancelled'},
-    'payment_failed': {'pending_payment', 'cancelled'},
-    'paid': {'processing', 'cancelled'},
+    'payment_failed': {'pending_payment', 'paid', 'cancelled'},
+    'paid': {'processing'},
     'processing': {'shipped'},
     'shipped': {'completed'},
     'completed': set(),
@@ -115,7 +116,7 @@ def get_current_member():
         return None
 
     result = supabase.table('members') \
-        .select('id,email') \
+        .select('id,email,name,address') \
         .eq('email', current_user) \
         .limit(1) \
         .execute()
@@ -153,7 +154,7 @@ def build_cart_response(member_id):
 
 def get_member_order(member_id, order_id):
     result = supabase.table('orders') \
-        .select('id,member_id,status,total_amount,created_at,updated_at') \
+        .select(ORDER_FIELDS) \
         .eq('id', order_id) \
         .eq('member_id', member_id) \
         .limit(1) \
@@ -192,7 +193,7 @@ def require_admin_password():
 
 def get_admin_order(order_id):
     result = supabase.table('orders') \
-        .select('id,member_id,status,total_amount,created_at,updated_at') \
+        .select(ORDER_FIELDS) \
         .eq('id', order_id) \
         .limit(1) \
         .execute()
@@ -239,7 +240,7 @@ def admin_get_orders():
 
     try:
         query = supabase.table('orders') \
-            .select('id,member_id,status,total_amount,created_at,updated_at') \
+            .select(ORDER_FIELDS) \
             .order('id', desc=True)
 
         if status:
@@ -363,6 +364,11 @@ def create_order():
             .insert(order_items) \
             .execute()
 
+        supabase.table('cart_items') \
+            .delete() \
+            .eq('member_id', member['id']) \
+            .in_('product_id', product_ids) \
+            .execute()
 
         order['items'] = item_result.data or []
         cart = build_cart_response(member['id'])
@@ -385,7 +391,7 @@ def get_orders():
 
     try:
         orders_result = supabase.table('orders') \
-            .select('id,member_id,status,total_amount,created_at,updated_at') \
+            .select(ORDER_FIELDS) \
             .eq('member_id', member['id']) \
             .order('id', desc=True) \
             .execute()
@@ -431,12 +437,25 @@ def update_order_status(order_id):
             'message': f'訂單狀態不能從 {current_status} 改成 {next_status}'
         }), 400
 
+    update_data = {'status': next_status, 'updated_at': utc_now_iso()}
+
     if current_status != 'paid' and next_status == 'paid':
+        recipient_name = (data.get('recipient_name') or order.get('recipient_name') or '').strip()
+        recipient_address = (data.get('recipient_address') or order.get('recipient_address') or '').strip()
+
+        if not recipient_name or not recipient_address:
+            return jsonify({
+                'success': False,
+                'message': 'Please enter recipient name and recipient address before payment success'
+            }), 400
+
+        update_data['recipient_name'] = recipient_name
+        update_data['recipient_address'] = recipient_address
         apply_successful_payment_stock_update(order_id)
         remove_paid_order_items_from_cart(member['id'], order_id)
 
     result = supabase.table('orders') \
-        .update({'status': next_status, 'updated_at': utc_now_iso()}) \
+        .update(update_data) \
         .eq('id', order_id) \
         .eq('member_id', member['id']) \
         .execute()
@@ -457,8 +476,11 @@ def cancel_order(order_id):
         return jsonify({'success': False, 'message': '找不到訂單'}), 404
 
     current_status = order.get('status')
-    if not can_change_status(current_status, 'cancelled'):
-        return jsonify({'success': False, 'message': f'{current_status} 狀態不能取消'}), 400
+    if current_status not in {'pending_payment', 'payment_failed'}:
+        return jsonify({
+            'success': False,
+            'message': 'Only unpaid orders can be cancelled'
+        }), 400
 
     result = supabase.table('orders') \
         .update({'status': 'cancelled', 'updated_at': utc_now_iso()}) \
@@ -467,7 +489,7 @@ def cancel_order(order_id):
         .execute()
 
     updated_order = attach_order_items(result.data[0]) if result.data else None
-    return jsonify({'success': True, 'message': '訂單已取消', 'order': updated_order})
+    return jsonify({'success': True, 'message': 'Order cancelled', 'order': updated_order})
 
 
 @app.route('/api/orders/<int:order_id>/mock-payment', methods=['POST'])
@@ -488,26 +510,40 @@ def mock_payment(order_id):
         return jsonify({'success': False, 'message': '找不到訂單'}), 404
 
     current_status = order.get('status')
-    next_status = 'paid' if payment_result == 'success' else 'payment_failed'
+    next_status = 'paid' if payment_result == 'success' else 'pending_payment'
 
-    if not can_change_status(current_status, next_status):
+    if payment_result == 'success' and not can_change_status(current_status, next_status):
         return jsonify({
             'success': False,
-            'message': f'訂單狀態不能從 {current_status} 改成 {next_status}'
+            'message': f'Cannot change order status from {current_status} to {next_status}'
         }), 400
 
+    update_data = {'status': next_status, 'updated_at': utc_now_iso()}
+
     if current_status != 'paid' and next_status == 'paid':
+        recipient_name = (data.get('recipient_name') or order.get('recipient_name') or '').strip()
+        recipient_address = (data.get('recipient_address') or order.get('recipient_address') or '').strip()
+
+        if not recipient_name or not recipient_address:
+            return jsonify({
+                'success': False,
+                'message': 'Please enter recipient name and recipient address before payment success'
+            }), 400
+
+        update_data['recipient_name'] = recipient_name
+        update_data['recipient_address'] = recipient_address
         apply_successful_payment_stock_update(order_id)
         remove_paid_order_items_from_cart(member['id'], order_id)
 
     result = supabase.table('orders') \
-        .update({'status': next_status, 'updated_at': utc_now_iso()}) \
+        .update(update_data) \
         .eq('id', order_id) \
         .eq('member_id', member['id']) \
         .execute()
 
     updated_order = attach_order_items(result.data[0]) if result.data else None
-    return jsonify({'success': True, 'message': '模擬付款完成', 'order': updated_order})
+    message = 'Payment success' if payment_result == 'success' else 'Payment failed, please try again'
+    return jsonify({'success': True, 'message': message, 'order': updated_order})
 
 
 if __name__ == '__main__':

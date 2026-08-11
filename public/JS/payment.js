@@ -18,6 +18,47 @@
         status.style.color = isError ? '#9d2f2f' : '#746b60';
     }
 
+    function setRecipientFields(name, address) {
+        const nameInput = document.getElementById('paymentRecipientName');
+        const addressInput = document.getElementById('paymentRecipientAddress');
+        if (nameInput && !nameInput.value.trim()) nameInput.value = name || '';
+        if (addressInput && !addressInput.value.trim()) addressInput.value = address || '';
+    }
+
+    async function loadMemberProfileForRecipient() {
+        const token = getToken();
+        if (!token) return;
+
+        try {
+            const response = await fetch('/api/member/profile', {
+                cache: 'no-store',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (response.ok && data.success && data.profile) {
+                setRecipientFields(data.profile.name, data.profile.address);
+            }
+        } catch (error) {
+            console.warn('Member profile load failed', error);
+        }
+    }
+
+    function getRecipientDetails() {
+        const nameInput = document.getElementById('paymentRecipientName');
+        const addressInput = document.getElementById('paymentRecipientAddress');
+        const recipientName = nameInput ? nameInput.value.trim() : '';
+        const recipientAddress = addressInput ? addressInput.value.trim() : '';
+
+        if (!recipientName || !recipientAddress) {
+            throw new Error('Please enter recipient name and recipient address before payment success');
+        }
+
+        return {
+            recipient_name: recipientName,
+            recipient_address: recipientAddress
+        };
+    }
+
     async function requestOrder(path, options = {}) {
         const token = getToken();
         if (!token) {
@@ -61,9 +102,12 @@
             `;
         }).join('');
 
-        const canPay = order.status === 'pending_payment';
+        setRecipientFields(order.recipient_name, order.recipient_address);
+
+        const canPay = order.status === 'pending_payment' || order.status === 'payment_failed';
+        const canFail = order.status === 'pending_payment';
         document.getElementById('paymentSuccessBtn').disabled = !canPay;
-        document.getElementById('paymentFailBtn').disabled = !canPay;
+        document.getElementById('paymentFailBtn').disabled = !canFail;
         detail.hidden = false;
         setStatus(canPay ? 'Please choose a simulated payment result.' : `This order is now ${order.status}.`);
     }
@@ -95,9 +139,12 @@
         setStatus('Processing simulated payment...');
 
         try {
+            const payload = result === 'success'
+                ? { result, ...getRecipientDetails() }
+                : { result };
             const data = await requestOrder(`/api/orders/${currentOrderId}/mock-payment`, {
                 method: 'POST',
-                body: JSON.stringify({ result })
+                body: JSON.stringify(payload)
             });
             renderOrder(data.order);
             if (result === 'success') {
@@ -106,7 +153,7 @@
                     window.location.replace('cart.html');
                 }, 900);
             } else {
-                setStatus('Payment failed. Order is payment_failed.');
+                setStatus('Payment failed, please try again', true);
             }
         } catch (error) {
             setStatus(error.message || 'Payment failed', true);
@@ -124,6 +171,7 @@
 
         document.getElementById('paymentSuccessBtn').addEventListener('click', () => submitPayment('success'));
         document.getElementById('paymentFailBtn').addEventListener('click', () => submitPayment('failed'));
+        await loadMemberProfileForRecipient();
         loadOrder();
     });
 })();

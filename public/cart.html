@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -26,6 +26,56 @@
             min-height: 28px;
             color: #333;
             font-weight: 700;
+        }
+
+        .unpaid-orders {
+            display: grid;
+            gap: 12px;
+            margin: 18px 0 28px;
+            padding: 18px;
+            border: 1px solid #e6e1d3;
+            background: #fffaf2;
+        }
+
+        .unpaid-orders[hidden] {
+            display: none;
+        }
+
+        .unpaid-orders h2 {
+            margin: 0;
+            font-size: 22px;
+            letter-spacing: 0;
+        }
+
+        .unpaid-order {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #eadfce;
+        }
+
+        .unpaid-order strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .unpaid-order-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .unpaid-order .btn {
+            width: auto;
+            border: 0;
+            white-space: nowrap;
+        }
+
+        .unpaid-order .secondary {
+            background: #8f3d3d;
         }
 
         .cart-list {
@@ -133,6 +183,16 @@
                 grid-column: 1 / -1;
                 justify-items: start;
             }
+
+
+            .unpaid-order {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .unpaid-order-actions {
+                justify-content: flex-start;
+            }
         }
     </style>
 </head>
@@ -186,6 +246,10 @@
         <main id="cartPage" class="cart-page">
             <h1>Shopping Cart</h1>
             <p id="cartPageStatus" class="cart-status">Loading cart...</p>
+            <section id="unpaidOrders" class="unpaid-orders" hidden>
+                <h2>Continue payment or cancel order</h2>
+                <div id="unpaidOrdersList"></div>
+            </section>
             <p id="cartEmpty" class="cart-empty" hidden>Your cart is empty.</p>
             <div id="cartList" class="cart-list"></div>
             <div class="cart-summary">
@@ -216,8 +280,9 @@
     }
 </script>
 <script src="JS/auth.js?v=20260730"></script>
-<script src="JS/cart.js?v=20260808-payment"></script>
+<script src="JS/cart.js?v=20260811-cancel-order"></script>
 </html>
+
 
 
 
