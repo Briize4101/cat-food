@@ -1,6 +1,7 @@
 (function () {
     const ORDER_API_BASE = 'http://127.0.0.1:5001';
     let currentOrderId = null;
+    let statusPollTimer = null;
 
     function getToken() {
         return localStorage.getItem('userToken');
@@ -16,6 +17,37 @@
         if (!status) return;
         status.textContent = message;
         status.style.color = isError ? '#9d2f2f' : '#746b60';
+    }
+
+    function stopStatusPolling() {
+        if (statusPollTimer) {
+            window.clearInterval(statusPollTimer);
+            statusPollTimer = null;
+        }
+    }
+
+    function handlePaidOrder() {
+        stopStatusPolling();
+        setStatus('Payment success. Returning to cart...');
+        window.setTimeout(() => {
+            window.location.replace('cart.html');
+        }, 1200);
+    }
+
+    function startStatusPolling() {
+        stopStatusPolling();
+        statusPollTimer = window.setInterval(async () => {
+            if (!currentOrderId) return;
+            try {
+                const data = await requestOrder(`/api/orders/${currentOrderId}`);
+                renderOrder(data.order);
+                if (data.order && data.order.status === 'paid') {
+                    handlePaidOrder();
+                }
+            } catch (error) {
+                console.warn('Order status polling failed', error);
+            }
+        }, 3000);
     }
 
     function setRecipientFields(name, address) {
@@ -50,7 +82,7 @@
         const recipientAddress = addressInput ? addressInput.value.trim() : '';
 
         if (!recipientName || !recipientAddress) {
-            throw new Error('Please enter recipient name and recipient address before payment success');
+            throw new Error('Please enter recipient name and recipient address');
         }
 
         return {
@@ -87,6 +119,8 @@
     function renderOrder(order) {
         const detail = document.getElementById('paymentDetail');
         const itemsRoot = document.getElementById('paymentItems');
+        const submitBtn = document.getElementById('submitPaymentInfoBtn');
+
         document.getElementById('paymentOrderId').textContent = `#${order.id}`;
         document.getElementById('paymentOrderStatus').textContent = order.status;
         document.getElementById('paymentTotal').textContent = formatMoney(order.total_amount);
@@ -104,12 +138,17 @@
 
         setRecipientFields(order.recipient_name, order.recipient_address);
 
-        const canPay = order.status === 'pending_payment' || order.status === 'payment_failed';
-        const canFail = order.status === 'pending_payment';
-        document.getElementById('paymentSuccessBtn').disabled = !canPay;
-        document.getElementById('paymentFailBtn').disabled = !canFail;
+        const canSubmit = order.status === 'pending_payment' || order.status === 'payment_failed';
+        submitBtn.disabled = !canSubmit;
         detail.hidden = false;
-        setStatus(canPay ? 'Please choose a simulated payment result.' : `This order is now ${order.status}.`);
+
+        if (order.status === 'paid') {
+            handlePaidOrder();
+        } else if (canSubmit) {
+            setStatus('Submit payment, then wait for admin confirmation.');
+        } else {
+            setStatus(`This order is now ${order.status}.`);
+        }
     }
 
     async function loadOrder() {
@@ -129,36 +168,24 @@
         }
     }
 
-    async function submitPayment(result) {
+    async function submitPaymentInfo() {
         if (!currentOrderId) return;
 
-        const successBtn = document.getElementById('paymentSuccessBtn');
-        const failBtn = document.getElementById('paymentFailBtn');
-        successBtn.disabled = true;
-        failBtn.disabled = true;
-        setStatus('Processing simulated payment...');
+        const submitBtn = document.getElementById('submitPaymentInfoBtn');
+        submitBtn.disabled = true;
+        setStatus('Submitting payment information...');
 
         try {
-            const payload = result === 'success'
-                ? { result, ...getRecipientDetails() }
-                : { result };
-            const data = await requestOrder(`/api/orders/${currentOrderId}/mock-payment`, {
-                method: 'POST',
-                body: JSON.stringify(payload)
+            const data = await requestOrder(`/api/orders/${currentOrderId}/recipient`, {
+                method: 'PUT',
+                body: JSON.stringify(getRecipientDetails())
             });
             renderOrder(data.order);
-            if (result === 'success') {
-                setStatus('Payment success. Returning to cart...');
-                window.setTimeout(() => {
-                    window.location.replace('cart.html');
-                }, 900);
-            } else {
-                setStatus('Payment failed, please try again', true);
-            }
+            setStatus(data.message || 'Payment submitted. Please wait for admin confirmation.');
+            startStatusPolling();
         } catch (error) {
-            setStatus(error.message || 'Payment failed', true);
-            successBtn.disabled = false;
-            failBtn.disabled = false;
+            setStatus(error.message || 'Payment information submit failed', true);
+            submitBtn.disabled = false;
         }
     }
 
@@ -169,9 +196,9 @@
             return;
         }
 
-        document.getElementById('paymentSuccessBtn').addEventListener('click', () => submitPayment('success'));
-        document.getElementById('paymentFailBtn').addEventListener('click', () => submitPayment('failed'));
+        document.getElementById('submitPaymentInfoBtn').addEventListener('click', submitPaymentInfo);
         await loadMemberProfileForRecipient();
         loadOrder();
+        startStatusPolling();
     });
 })();

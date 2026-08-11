@@ -274,12 +274,23 @@ def admin_update_order_status(order_id):
 
     try:
         current_status = order.get('status')
+        update_data = {'status': next_status, 'updated_at': utc_now_iso()}
+
         if current_status != 'paid' and next_status == 'paid':
+            recipient_name = (order.get('recipient_name') or '').strip()
+            recipient_address = (order.get('recipient_address') or '').strip()
+
+            if not recipient_name or not recipient_address:
+                return jsonify({
+                    'success': False,
+                    'message': 'Recipient name and address are required before marking paid'
+                }), 400
+
             apply_successful_payment_stock_update(order_id)
             remove_paid_order_items_from_cart(order['member_id'], order_id)
 
         result = supabase.table('orders') \
-            .update({'status': next_status, 'updated_at': utc_now_iso()}) \
+            .update(update_data) \
             .eq('id', order_id) \
             .execute()
 
@@ -416,6 +427,51 @@ def get_order(order_id):
     return jsonify({'success': True, 'order': attach_order_items(order)})
 
 
+@app.route('/api/orders/<int:order_id>/recipient', methods=['PUT'])
+@jwt_required()
+def update_order_recipient(order_id):
+    member = get_current_member()
+    if not member:
+        return jsonify({'success': False, 'message': 'Member not found'}), 404
+
+    data = request.get_json() or {}
+    recipient_name = (data.get('recipient_name') or '').strip()
+    recipient_address = (data.get('recipient_address') or '').strip()
+
+    if not recipient_name or not recipient_address:
+        return jsonify({
+            'success': False,
+            'message': 'Please enter recipient name and recipient address'
+        }), 400
+
+    order = get_member_order(member['id'], order_id)
+    if not order:
+        return jsonify({'success': False, 'message': 'Order not found'}), 404
+
+    if order.get('status') not in {'pending_payment', 'payment_failed'}:
+        return jsonify({
+            'success': False,
+            'message': 'Recipient information can only be updated before payment is confirmed'
+        }), 400
+
+    result = supabase.table('orders') \
+        .update({
+            'recipient_name': recipient_name,
+            'recipient_address': recipient_address,
+            'updated_at': utc_now_iso()
+        }) \
+        .eq('id', order_id) \
+        .eq('member_id', member['id']) \
+        .execute()
+
+    updated_order = attach_order_items(result.data[0]) if result.data else None
+    return jsonify({
+        'success': True,
+        'message': 'Payment information submitted. Please wait for admin confirmation.',
+        'order': updated_order
+    })
+
+
 @app.route('/api/orders/<int:order_id>/status', methods=['PUT'])
 @jwt_required()
 def update_order_status(order_id):
@@ -495,55 +551,10 @@ def cancel_order(order_id):
 @app.route('/api/orders/<int:order_id>/mock-payment', methods=['POST'])
 @jwt_required()
 def mock_payment(order_id):
-    member = get_current_member()
-    if not member:
-        return jsonify({'success': False, 'message': '找不到會員資料'}), 404
-
-    data = request.get_json() or {}
-    payment_result = data.get('result')
-
-    if payment_result not in {'success', 'failed'}:
-        return jsonify({'success': False, 'message': '付款結果只能是 success 或 failed'}), 400
-
-    order = get_member_order(member['id'], order_id)
-    if not order:
-        return jsonify({'success': False, 'message': '找不到訂單'}), 404
-
-    current_status = order.get('status')
-    next_status = 'paid' if payment_result == 'success' else 'pending_payment'
-
-    if payment_result == 'success' and not can_change_status(current_status, next_status):
-        return jsonify({
-            'success': False,
-            'message': f'Cannot change order status from {current_status} to {next_status}'
-        }), 400
-
-    update_data = {'status': next_status, 'updated_at': utc_now_iso()}
-
-    if current_status != 'paid' and next_status == 'paid':
-        recipient_name = (data.get('recipient_name') or order.get('recipient_name') or '').strip()
-        recipient_address = (data.get('recipient_address') or order.get('recipient_address') or '').strip()
-
-        if not recipient_name or not recipient_address:
-            return jsonify({
-                'success': False,
-                'message': 'Please enter recipient name and recipient address before payment success'
-            }), 400
-
-        update_data['recipient_name'] = recipient_name
-        update_data['recipient_address'] = recipient_address
-        apply_successful_payment_stock_update(order_id)
-        remove_paid_order_items_from_cart(member['id'], order_id)
-
-    result = supabase.table('orders') \
-        .update(update_data) \
-        .eq('id', order_id) \
-        .eq('member_id', member['id']) \
-        .execute()
-
-    updated_order = attach_order_items(result.data[0]) if result.data else None
-    message = 'Payment success' if payment_result == 'success' else 'Payment failed, please try again'
-    return jsonify({'success': True, 'message': message, 'order': updated_order})
+    return jsonify({
+        'success': False,
+        'message': 'Payment confirmation is handled from the order admin page'
+    }), 403
 
 
 if __name__ == '__main__':

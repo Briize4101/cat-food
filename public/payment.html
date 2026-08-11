@@ -91,8 +91,8 @@
     <main class="payment-page" id="paymentPage">
         <section class="payment-header">
             <div>
-                <h1>Mock Payment</h1>
-                <div class="payment-muted">Complete the simulated payment for your order.</div>
+                <h1>Payment Information</h1>
+                <div class="payment-muted">Submit your recipient information, then wait for admin payment confirmation.</div>
             </div>
             <a href="cart.html" class="btn">Back to cart</a>
         </section>
@@ -117,13 +117,12 @@
                 <span id="paymentTotal"></span>
             </div>
             <div class="payment-actions">
-                <button type="button" class="btn" id="paymentSuccessBtn">Simulate payment success</button>
-                <button type="button" class="btn secondary" id="paymentFailBtn">Simulate payment failed</button>
+                <button type="button" class="btn" id="submitPaymentInfoBtn">Submit payment</button>
             </div>
         </section>
     </main>
 
     <script src="JS/auth.js?v=20260805-google"></script>
-    <script src="JS/payment.js?v=20260811-payment-retry"></script>
+    <script src="JS/payment.js?v=20260811-admin-payment-submit"></script>
 </body>
 </html>

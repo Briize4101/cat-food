@@ -53,6 +53,32 @@ function formatDate(value) {
     return date.toLocaleString();
 }
 
+function isPaymentSubmitted(order) {
+    return Boolean((order.recipient_name || '').trim() && (order.recipient_address || '').trim());
+}
+
+function renderPaymentResultActions(order) {
+    const submitted = isPaymentSubmitted(order);
+
+    if (order.status === 'paid') {
+        return '<span class="badge">Paid</span>';
+    }
+
+    if (order.status !== 'pending_payment' && order.status !== 'payment_failed') {
+        return '<span class="muted">Not available</span>';
+    }
+
+    const disabled = submitted ? '' : 'disabled';
+    const title = submitted ? '' : 'title="Payment has not been submitted yet"';
+
+    return `
+        <div class="payment-result-actions">
+            <button type="button" data-payment-result="yes" data-order-id="${order.id}" ${disabled} ${title}>Yes</button>
+            <button type="button" class="secondary" data-payment-result="no" data-order-id="${order.id}" ${disabled} ${title}>No</button>
+        </div>
+    `;
+}
+
 function createStatusOptions(currentStatus) {
     return STATUSES.map(status => {
         const selected = status === currentStatus ? 'selected' : '';
@@ -71,7 +97,7 @@ function renderOrders() {
     const visibleOrders = filter ? orders.filter(order => order.status === filter) : orders;
 
     if (!visibleOrders.length) {
-        ordersBody.innerHTML = '<tr><td colspan="8">No orders found.</td></tr>';
+        ordersBody.innerHTML = '<tr><td colspan="10">No orders found.</td></tr>';
         return;
     }
 
@@ -95,7 +121,9 @@ function renderOrders() {
                 <td>${order.recipient_name || '-'}<br><span class="muted">${order.recipient_address || '-'}</span></td>
                 <td><div class="items">${items}</div></td>
                 <td>${formatMoney(order.total_amount)}</td>
+                <td><span class="badge">${isPaymentSubmitted(order) ? 'Yes' : 'No'}</span></td>
                 <td><span class="badge">${order.status}</span></td>
+                <td>${renderPaymentResultActions(order)}</td>
                 <td>
                     <select data-order-status="${order.id}" aria-label="Change order ${order.id} status">
                         ${createStatusOptions(order.status)}
@@ -108,6 +136,10 @@ function renderOrders() {
 
     document.querySelectorAll('[data-order-status]').forEach(select => {
         select.addEventListener('change', () => updateOrderStatus(select.dataset.orderStatus, select.value, select));
+    });
+
+    document.querySelectorAll('[data-payment-result]').forEach(button => {
+        button.addEventListener('click', () => updatePaymentResult(button.dataset.orderId, button.dataset.paymentResult, button));
     });
 }
 
@@ -140,6 +172,42 @@ async function loadOrders() {
         setStatus(error.message || 'Order load failed', true);
     } finally {
         refreshBtn.disabled = false;
+    }
+}
+
+async function updatePaymentResult(orderId, result, button) {
+    const status = result === 'yes' ? 'paid' : 'pending_payment';
+    button.disabled = true;
+    setStatus(`Updating payment result for order #${orderId}...`);
+
+    try {
+        const response = await fetch(`/api/admin/orders/${orderId}/status`, {
+            method: 'PUT',
+            headers: getAdminHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ status })
+        });
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Payment result update failed');
+        }
+
+        const index = orders.findIndex(order => String(order.id) === String(orderId));
+        if (index >= 0) {
+            orders[index] = data.order;
+        }
+        renderOrders();
+        setStatus(result === 'yes'
+            ? `Order #${orderId} marked as paid.`
+            : `Order #${orderId} payment marked as not successful.`);
+    } catch (error) {
+        console.error(error);
+        if (error.message === 'Invalid admin password') {
+            sessionStorage.removeItem('orderAdminPassword');
+            adminPassword = '';
+        }
+        setStatus(error.message || 'Payment result update failed', true);
+        button.disabled = false;
     }
 }
 

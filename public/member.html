@@ -65,9 +65,64 @@
             color: #555;
             font-size: 14px;
         }
+
+
+        .order-history {
+            max-width: 880px;
+            margin: 0 auto 90px;
+            padding: 0 20px;
+        }
+
+        .order-history .subtitle {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 18px;
+            text-align: center;
+        }
+
+        .order-history-status {
+            min-height: 24px;
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .order-history-list {
+            display: grid;
+            gap: 14px;
+        }
+
+        .order-history-card {
+            border: 1px solid #ddd;
+            padding: 16px;
+            background: #fff;
+        }
+
+        .order-history-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .order-history-items {
+            display: grid;
+            gap: 6px;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .order-history-empty {
+            color: #555;
+            font-size: 14px;
+            text-align: center;
+        }
     </style>
 
     <script src="JS/auth.js?v=20260721"></script>
+    <script src="JS/member_orders.js?v=20260811-paid-history"></script>
     <script>
         function showBody() {
             if (document.body) {
@@ -139,6 +194,13 @@
                 </div>
             </form>
         </section>
+
+        <section class="order-history">
+            <div class="subtitle">Paid Order History</div>
+            <p id="orderHistoryStatus" class="order-history-status">Loading orders...</p>
+            <p id="orderHistoryEmpty" class="order-history-empty" hidden>No paid orders yet.</p>
+            <div id="orderHistoryList" class="order-history-list"></div>
+        </section>
     </div>
 </body>
 
@@ -153,6 +215,9 @@ if (logoutBtn) {
 }
 
 initMemberProfileForm();
+if (typeof initMemberOrderHistory === 'function') {
+    initMemberOrderHistory();
+}
 </script>
 </html>
 

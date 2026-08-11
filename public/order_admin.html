@@ -79,7 +79,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1080px;
+            min-width: 1260px;
         }
         th, td {
             padding: 12px;
@@ -105,6 +105,20 @@
             gap: 10px;
             color: var(--muted);
         }
+        .payment-result-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .payment-result-actions button {
+            min-height: 32px;
+            padding: 6px 10px;
+        }
+        .payment-result-actions .secondary {
+            background: #8f3d3d;
+            border-color: #8f3d3d;
+        }
+
         .badge {
             display: inline-flex;
             align-items: center;
@@ -148,7 +162,9 @@
                         <th>Recipient</th>
                         <th>Items</th>
                         <th>Total</th>
+                        <th>Submitted</th>
                         <th>Current Status</th>
+                        <th>Payment Result</th>
                         <th>Change Status</th>
                         <th>Updated</th>
                     </tr>
@@ -158,6 +174,6 @@
         </section>
     </main>
 
-    <script src="/JS/order_admin.js?v=20260811-recipient"></script>
+    <script src="/JS/order_admin.js?v=20260811-payment-result"></script>
 </body>
 </html>
