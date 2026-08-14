@@ -1,4 +1,4 @@
-async function checkLoginStatus() {
+﻿async function checkLoginStatus() {
     const token = localStorage.getItem('userToken');
 
     if (!token) {
@@ -41,14 +41,14 @@ function clearLoginState() {
 
 async function getSupabaseClient() {
     if (!window.supabase) {
-        throw new Error('Supabase JS 尚未載入');
+        throw new Error('Supabase JS 撠頛');
     }
 
     const response = await fetch('/api/supabase-config', { cache: 'no-store' });
     const config = await response.json();
 
     if (!response.ok || !config.success) {
-        throw new Error(config.message || 'Supabase 設定讀取失敗');
+        throw new Error(config.message || 'Supabase config load failed');
     }
 
     return window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
@@ -69,7 +69,7 @@ async function finishGoogleLogin(session) {
     const data = await response.json();
 
     if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Google 登入失敗');
+        throw new Error(data.message || 'Google ?餃憭望?');
     }
 
     localStorage.setItem('userToken', data.token);
@@ -105,7 +105,7 @@ async function handleGoogleOAuthCallback() {
     } catch (error) {
         console.error('Google OAuth callback failed:', error);
         clearLoginState();
-        alert(error.message || 'Google 登入失敗，請稍後再試');
+        alert(error.message || 'Google ?餃憭望?嚗?蝔??岫');
         return false;
     }
 }
@@ -122,7 +122,12 @@ function initGoogleLogin() {
             const redirectTo = `${window.location.origin}/log_in.html`;
             const result = await client.auth.signInWithOAuth({
                 provider: 'google',
-                options: { redirectTo }
+                options: {
+                    redirectTo,
+                    queryParams: {
+                        prompt: 'select_account'
+                    }
+                }
             });
 
             if (result.error) {
@@ -130,7 +135,7 @@ function initGoogleLogin() {
             }
         } catch (error) {
             console.error('Google login failed:', error);
-            alert(error.message || 'Google 登入失敗，請稍後再試');
+            alert(error.message || 'Google ?餃憭望?嚗?蝔??岫');
             googleLoginBtn.disabled = false;
         }
     });
@@ -156,15 +161,15 @@ function initLoginForm() {
 
             if (data.success) {
                 localStorage.setItem('userToken', data.token);
-                alert('登入成功');
+                alert('Login success');
                 window.location.replace('member.html');
             } else {
                 clearLoginState();
-                alert(data.message || '帳號或密碼錯誤');
+                alert(data.message || 'Invalid email or password');
             }
         } catch (error) {
             console.error('Login failed:', error);
-            alert('登入時發生錯誤，請稍後再試');
+            alert('Login failed. Please try again.');
         }
     });
 }
@@ -311,3 +316,4 @@ function initMemberProfileForm() {
         }
     });
 }
+
