@@ -236,7 +236,7 @@
                 try {
                     button.disabled = true;
                     if (status) status.textContent = `Cancelling order #${orderId}...`;
-                    await requestCart(`/api/orders/${orderId}/cancel`, { method: 'POST' });
+                    await requestCart(`/api/orders/${orderId}/cancel`, { method: 'PUT' });
                     await loadUnpaidOrders();
                     if (status) status.textContent = `Order #${orderId} cancelled.`;
                 } catch (error) {

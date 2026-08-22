@@ -41,7 +41,7 @@ function clearLoginState() {
 
 async function getSupabaseClient() {
     if (!window.supabase) {
-        throw new Error('Supabase JS 撠頛');
+        throw new Error('Supabase JS failed to load');
     }
 
     const response = await fetch('/api/supabase-config', { cache: 'no-store' });
@@ -69,7 +69,7 @@ async function finishGoogleLogin(session) {
     const data = await response.json();
 
     if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Google ?餃憭望?');
+        throw new Error(data.message || 'Google login failed');
     }
 
     localStorage.setItem('userToken', data.token);
@@ -105,7 +105,7 @@ async function handleGoogleOAuthCallback() {
     } catch (error) {
         console.error('Google OAuth callback failed:', error);
         clearLoginState();
-        alert(error.message || 'Google ?餃憭望?嚗?蝔??岫');
+        alert(error.message || 'Google login failed. Please try again.');
         return false;
     }
 }
@@ -135,11 +135,12 @@ function initGoogleLogin() {
             }
         } catch (error) {
             console.error('Google login failed:', error);
-            alert(error.message || 'Google ?餃憭望?嚗?蝔??岫');
+            alert(error.message || 'Google login failed. Please try again.');
             googleLoginBtn.disabled = false;
         }
     });
 }
+
 function initLoginForm() {
     const loginForm = document.getElementById('loginForm');
     if (!loginForm) return;
@@ -170,6 +171,50 @@ function initLoginForm() {
         } catch (error) {
             console.error('Login failed:', error);
             alert('Login failed. Please try again.');
+        }
+    });
+}
+
+async function initRegisterPage() {
+    const loggedIn = await checkLoginStatus();
+    if (loggedIn) {
+        window.location.replace('member.html');
+        return;
+    }
+
+    const registerForm = document.getElementById('registerForm');
+    if (!registerForm) return;
+
+    registerForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const emailVal = document.getElementById('regEmail').value.trim();
+        const passwordVal = document.getElementById('regPassword').value;
+        const confirmPasswordVal = document.getElementById('regConfirmPassword').value;
+
+        if (passwordVal !== confirmPasswordVal) {
+            alert('Passwords do not match. Please check again.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: emailVal, password: passwordVal })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert('Registration successful. Please log in again.');
+                window.location.href = 'log_in.html';
+            } else {
+                alert(data.message || 'Registration failed. Please try again.');
+            }
+        } catch (error) {
+            console.error('Register failed:', error);
+            alert('Registration failed. Please try again.');
         }
     });
 }

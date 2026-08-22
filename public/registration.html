@@ -91,52 +91,10 @@
     </div>
 </body>
 
-<script src="JS/auth.js?v=20260719"></script>
+<script src="JS/auth.js?v=20260822-register"></script>
 
 <script>
-    (async function() {
-        const loggedIn = await checkLoginStatus();
-        if (loggedIn) {
-            window.location.replace("member.html");
-            return;
-        }
-
-        const registerForm = document.getElementById("registerForm");
-        if (!registerForm) return;
-
-        registerForm.addEventListener("submit", async function(e) {
-            e.preventDefault();
-
-            const emailVal = document.getElementById("regEmail").value.trim();
-            const passwordVal = document.getElementById("regPassword").value;
-            const confirmPasswordVal = document.getElementById("regConfirmPassword").value;
-
-            if (passwordVal !== confirmPasswordVal) {
-                alert("兩次輸入的密碼不相同，請重新確認！");
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: emailVal, password: passwordVal })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    alert("註冊成功，請重新登入");
-                    window.location.href = "log_in.html";
-                } else {
-                    alert(data.message || "註冊失敗，請稍後再試");
-                }
-            } catch (err) {
-                console.error("Register failed:", err);
-                alert("註冊時發生錯誤，請稍後再試");
-            }
-        });
-    })();
+    initRegisterPage();
 </script>
 </html>
 

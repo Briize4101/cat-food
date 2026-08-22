@@ -344,7 +344,7 @@ def get_cart():
         return jsonify({"success": False, "message": f"購物車讀取失敗：{error}"}), 500
 
 
-@app.route('/api/cart/items', methods=['POST'])
+@app.route('/api/cart/items', methods=['POST']) #product.js
 @jwt_required()
 def add_cart_item():
     member = get_current_member()
@@ -590,7 +590,7 @@ def create_order():
         return jsonify({"success": False, "message": f"訂單建立失敗：{error}"}), 500
 
 
-@app.route('/api/orders', methods=['GET'])
+@app.route('/api/orders', methods=['GET']) # cart.js
 @jwt_required()
 def get_orders():
     member = get_current_member()
@@ -669,7 +669,7 @@ def update_order_recipient(order_id):
     })
 
 
-@app.route('/api/orders/<int:order_id>/cancel', methods=['POST'])
+@app.route('/api/orders/<int:order_id>/cancel', methods=['PUT']) # cart.js
 @jwt_required()
 def cancel_order(order_id):
     member = get_current_member()
@@ -695,25 +695,8 @@ def cancel_order(order_id):
     updated_order = attach_order_items(result.data[0]) if result.data else None
     return jsonify({"success": True, "message": "Order cancelled", "order": updated_order})
 
-@app.route('/api/cat-food', methods=['GET'])
-def get_cat_food():
-    try:
-        result = supabase.table("products") \
-            .select(PRODUCT_FIELDS) \
-            .eq("is_active", True) \
-            .limit(1) \
-            .execute()
-    except Exception as error:
-        return jsonify({"success": False, "message": f"商品資料讀取失敗：{error}"}), 500
-
-    if not result.data:
-        return jsonify({"success": False, "message": "目前沒有商品資料"}), 404
-
-    return jsonify(result.data[0])
-
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
-
 
 
