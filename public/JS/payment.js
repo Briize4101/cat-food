@@ -1,5 +1,4 @@
 (function () {
-    const ORDER_API_BASE = 'http://127.0.0.1:5001';
     let currentOrderId = null;
     let statusPollTimer = null;
 
@@ -98,7 +97,7 @@
             throw new Error('Please login first');
         }
 
-        const response = await fetch(`${ORDER_API_BASE}${path}`, {
+        const response = await fetch(path, {
             cache: 'no-store',
             ...options,
             headers: {

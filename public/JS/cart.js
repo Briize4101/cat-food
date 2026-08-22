@@ -2,7 +2,7 @@
     let cartItems = [];
     let unpaidOrders = [];
     const selectedProductIds = new Set();
-    const ORDER_API_BASE = 'http://127.0.0.1:5001';
+    const PAID_ORDER_STATUSES = new Set(['paid', 'processing', 'shipped', 'completed']);
 
     function getToken() {
         return localStorage.getItem('userToken');
@@ -97,7 +97,7 @@
     }
 
     async function loadUnpaidOrders() {
-        const data = await requestCart(`${ORDER_API_BASE}/api/orders`, { method: 'GET' });
+        const data = await requestCart('/api/orders', { method: 'GET' });
         unpaidOrders = (data.orders || []).filter((order) => (
             order.status === 'pending_payment' || order.status === 'payment_failed'
         ));
@@ -129,6 +129,57 @@
             </div>
         `).join('');
     }
+
+    function renderOrderHistory(orders) {
+        const list = document.getElementById('orderHistoryList');
+        const empty = document.getElementById('orderHistoryEmpty');
+        const status = document.getElementById('orderHistoryStatus');
+        if (!list || !empty || !status) return;
+
+        const paidOrders = orders.filter((order) => PAID_ORDER_STATUSES.has(order.status));
+        list.innerHTML = '';
+
+        if (!paidOrders.length) {
+            empty.hidden = false;
+            status.textContent = '';
+            return;
+        }
+
+        empty.hidden = true;
+        status.textContent = '';
+        list.innerHTML = paidOrders.map((order) => {
+            const items = (order.items || []).map((item) => {
+                const product = item.products || {};
+                return `<div>${product.name || `Product #${item.product_id}`} x ${item.quantity} - ${formatPrice(item.line_total)}</div>`;
+            }).join('') || '<div>No items</div>';
+
+            return `
+                <article class="order-history-card">
+                    <div class="order-history-head">
+                        <strong>Order #${order.id}</strong>
+                        <span>Status: ${order.status}</span>
+                        <span>Total: ${formatPrice(order.total_amount)}</span>
+                        <span>${formatDate(order.created_at)}</span>
+                    </div>
+                    <div class="order-history-items">${items}</div>
+                </article>
+            `;
+        }).join('');
+    }
+
+    window.initMemberOrderHistory = async function initMemberOrderHistory() {
+        const status = document.getElementById('orderHistoryStatus');
+        const token = getToken();
+        if (!status || !token) return;
+
+        try {
+            status.textContent = 'Loading orders...';
+            const data = await requestCart('/api/orders', { method: 'GET' });
+            renderOrderHistory(data.orders || []);
+        } catch (error) {
+            status.textContent = error.message || 'Order history load failed';
+        }
+    };
 
     async function loadCart() {
         const data = await requestCart('/api/cart', { method: 'GET' });
@@ -185,7 +236,7 @@
                 try {
                     button.disabled = true;
                     if (status) status.textContent = `Cancelling order #${orderId}...`;
-                    await requestCart(`${ORDER_API_BASE}/api/orders/${orderId}/cancel`, { method: 'POST' });
+                    await requestCart(`/api/orders/${orderId}/cancel`, { method: 'POST' });
                     await loadUnpaidOrders();
                     if (status) status.textContent = `Order #${orderId} cancelled.`;
                 } catch (error) {
@@ -256,7 +307,7 @@
                 try {
                     checkoutButton.disabled = true;
                     if (status) status.textContent = 'Creating order...';
-                    const data = await requestCart(`${ORDER_API_BASE}/api/orders`, {
+                    const data = await requestCart('/api/orders', {
                         method: 'POST',
                         body: JSON.stringify({ product_ids: Array.from(selectedProductIds) })
                     });

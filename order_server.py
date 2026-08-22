@@ -303,7 +303,7 @@ def admin_update_order_status(order_id):
         return jsonify({'success': False, 'message': f'Admin order update failed: {error}'}), 500
 
 
-@app.route('/api/orders', methods=['POST'])
+@app.route('/api/admin/member/orders', methods=['POST'])
 @jwt_required()
 def create_order():
     member = get_current_member()
@@ -393,7 +393,7 @@ def create_order():
         return jsonify({'success': False, 'message': f'訂單建立失敗：{error}'}), 500
 
 
-@app.route('/api/orders', methods=['GET'])
+@app.route('/api/admin/member/orders', methods=['GET'])
 @jwt_required()
 def get_orders():
     member = get_current_member()
@@ -413,7 +413,7 @@ def get_orders():
         return jsonify({'success': False, 'message': f'訂單讀取失敗：{error}'}), 500
 
 
-@app.route('/api/orders/<int:order_id>', methods=['GET'])
+@app.route('/api/admin/member/orders/<int:order_id>', methods=['GET'])
 @jwt_required()
 def get_order(order_id):
     member = get_current_member()
@@ -427,7 +427,7 @@ def get_order(order_id):
     return jsonify({'success': True, 'order': attach_order_items(order)})
 
 
-@app.route('/api/orders/<int:order_id>/recipient', methods=['PUT'])
+@app.route('/api/admin/member/orders/<int:order_id>/recipient', methods=['PUT'])
 @jwt_required()
 def update_order_recipient(order_id):
     member = get_current_member()
@@ -472,7 +472,7 @@ def update_order_recipient(order_id):
     })
 
 
-@app.route('/api/orders/<int:order_id>/status', methods=['PUT'])
+@app.route('/api/admin/member/orders/<int:order_id>/status', methods=['PUT'])
 @jwt_required()
 def update_order_status(order_id):
     member = get_current_member()
@@ -520,7 +520,7 @@ def update_order_status(order_id):
     return jsonify({'success': True, 'order': updated_order})
 
 
-@app.route('/api/orders/<int:order_id>/cancel', methods=['POST'])
+@app.route('/api/admin/member/orders/<int:order_id>/cancel', methods=['POST'])
 @jwt_required()
 def cancel_order(order_id):
     member = get_current_member()
@@ -548,7 +548,7 @@ def cancel_order(order_id):
     return jsonify({'success': True, 'message': 'Order cancelled', 'order': updated_order})
 
 
-@app.route('/api/orders/<int:order_id>/mock-payment', methods=['POST'])
+@app.route('/api/admin/member/orders/<int:order_id>/mock-payment', methods=['POST'])
 @jwt_required()
 def mock_payment(order_id):
     return jsonify({
