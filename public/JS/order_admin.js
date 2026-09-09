@@ -13,27 +13,13 @@ const ordersBody = document.getElementById('ordersBody');
 const refreshBtn = document.getElementById('refreshBtn');
 const statusFilter = document.getElementById('statusFilter');
 let orders = [];
-let adminPassword = sessionStorage.getItem('orderAdminPassword') || '';
 
 function getAdminHeaders(extraHeaders = {}) {
+    const token = localStorage.getItem('userToken');
     return {
         ...extraHeaders,
-        'X-Admin-Password': adminPassword
+        'Authorization': `Bearer ${token}`
     };
-}
-
-function ensureAdminPassword() {
-    if (adminPassword) return true;
-
-    const password = window.prompt('Enter order admin password');
-    if (!password) {
-        setStatus('Admin password is required.', true);
-        return false;
-    }
-
-    adminPassword = password;
-    sessionStorage.setItem('orderAdminPassword', password);
-    return true;
 }
 
 function setStatus(message, isError = false) {
@@ -144,7 +130,10 @@ function renderOrders() {
 }
 
 async function loadOrders() {
-    if (!ensureAdminPassword()) return;
+    if (!localStorage.getItem('userToken')) {
+        window.location.replace('/log_in.html');
+        return;
+    }
 
     refreshBtn.disabled = true;
     setStatus('Loading orders...');
@@ -165,10 +154,6 @@ async function loadOrders() {
         setStatus(`${orders.length} orders loaded.`);
     } catch (error) {
         console.error(error);
-        if (error.message === 'Invalid admin password') {
-            sessionStorage.removeItem('orderAdminPassword');
-            adminPassword = '';
-        }
         setStatus(error.message || 'Order load failed', true);
     } finally {
         refreshBtn.disabled = false;
@@ -202,10 +187,6 @@ async function updatePaymentResult(orderId, result, button) {
             : `Order #${orderId} payment marked as not successful.`);
     } catch (error) {
         console.error(error);
-        if (error.message === 'Invalid admin password') {
-            sessionStorage.removeItem('orderAdminPassword');
-            adminPassword = '';
-        }
         setStatus(error.message || 'Payment result update failed', true);
         button.disabled = false;
     }
@@ -237,10 +218,6 @@ async function updateOrderStatus(orderId, status, select) {
     } catch (error) {
         console.error(error);
         if (originalStatus) select.value = originalStatus;
-        if (error.message === 'Invalid admin password') {
-            sessionStorage.removeItem('orderAdminPassword');
-            adminPassword = '';
-        }
         setStatus(error.message || 'Status update failed', true);
     } finally {
         select.disabled = false;

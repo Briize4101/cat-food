@@ -4,27 +4,15 @@ const form = document.getElementById('productForm');
 const refreshBtn = document.getElementById('refreshProductsBtn');
 const newBtn = document.getElementById('newProductBtn');
 let products = [];
-let adminPassword = sessionStorage.getItem('orderAdminPassword') || '';
 
 function setStatus(message, isError = false) {
     statusEl.textContent = message;
     statusEl.classList.toggle('error', isError);
 }
 
-function ensureAdminPassword() {
-    if (adminPassword) return true;
-    const password = window.prompt('Enter admin password');
-    if (!password) {
-        setStatus('Admin password is required.', true);
-        return false;
-    }
-    adminPassword = password;
-    sessionStorage.setItem('orderAdminPassword', password);
-    return true;
-}
-
 function adminHeaders(extra = {}) {
-    return { ...extra, 'X-Admin-Password': adminPassword };
+    const token = localStorage.getItem('userToken');
+    return { ...extra, 'Authorization': `Bearer ${token}` };
 }
 
 function money(value) {
@@ -32,7 +20,11 @@ function money(value) {
 }
 
 async function adminFetch(url, options = {}) {
-    if (!ensureAdminPassword()) throw new Error('Admin password is required');
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+        window.location.replace('/log_in.html');
+        throw new Error('Please login first');
+    }
 
     const response = await fetch(url, {
         cache: 'no-store',
@@ -45,9 +37,8 @@ async function adminFetch(url, options = {}) {
     const data = await response.json();
 
     if (!response.ok || !data.success) {
-        if (data.message === 'Invalid admin password') {
-            sessionStorage.removeItem('orderAdminPassword');
-            adminPassword = '';
+        if (response.status === 401 || response.status === 403) {
+            setStatus(data.message || 'Admin permission required', true);
         }
         throw new Error(data.message || 'Request failed');
     }

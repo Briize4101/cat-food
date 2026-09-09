@@ -1,5 +1,6 @@
 ﻿from flask import Flask, request, jsonify, send_from_directory
 from datetime import datetime, timezone
+from functools import wraps
 import os
 
 from dotenv import load_dotenv
@@ -39,12 +40,37 @@ def get_current_member():
         return None
 
     result = supabase.table("members") \
-        .select("id,email") \
+        .select("id,email,role") \
         .eq("email", current_user) \
         .limit(1) \
         .execute()
 
     return result.data[0] if result.data else None
+
+
+def get_member_role(email):
+    result = supabase.table("members") \
+        .select("role") \
+        .eq("email", email) \
+        .limit(1) \
+        .execute()
+
+    if not result.data:
+        return "member"
+
+    return result.data[0].get("role") or "member"
+
+
+def admin_required(fn):
+    @wraps(fn)
+    @jwt_required()
+    def wrapper(*args, **kwargs):
+        claims = get_jwt()
+        if claims.get("role") != "admin":
+            return jsonify({"success": False, "message": "Admin permission required"}), 403
+        return fn(*args, **kwargs)
+
+    return wrapper
 
 
 def utc_now_iso():
@@ -67,6 +93,16 @@ def home():
 @app.route('/member.html')
 def member_page():
     return send_from_directory(PUBLIC_DIR, 'member.html')
+
+
+@app.route('/admin/products')
+def product_admin_page():
+    return send_from_directory(PUBLIC_DIR, 'product_admin.html')
+
+
+@app.route('/admin/orders')
+def order_admin_page():
+    return send_from_directory(PUBLIC_DIR, 'order_admin.html')
 
 
 @app.route('/<path:path>')
@@ -111,7 +147,7 @@ def google_login():
         name = metadata.get("full_name") or metadata.get("name") or email
 
         existing = supabase.table("members") \
-            .select("id,email,name") \
+            .select("id,email,name,role") \
             .eq("email", email) \
             .limit(1) \
             .execute()
@@ -130,8 +166,9 @@ def google_login():
                 "password_hash": generate_password_hash(os.urandom(24).hex())
             }).execute()
 
-        website_token = create_access_token(identity=email)
-        return jsonify({"success": True, "token": website_token})
+        role = get_member_role(email)
+        website_token = create_access_token(identity=email, additional_claims={"role": role})
+        return jsonify({"success": True, "token": website_token, "role": role})
     except Exception as error:
         print("Google login failed:", error)
         return jsonify({"success": False, "message": "Google login failed"}), 401
@@ -180,7 +217,7 @@ def login():
     password = data.get('password')
 
     result = supabase.table("members") \
-        .select("id,email,password_hash") \
+        .select("id,email,password_hash,role") \
         .eq("email", username) \
         .limit(1) \
         .execute()
@@ -188,8 +225,9 @@ def login():
     user = result.data[0] if result.data else None
 
     if user and check_password_hash(user["password_hash"], password):
-        access_token = create_access_token(identity=username)
-        return jsonify({"success": True, "token": access_token})
+        role = user.get("role") or "member"
+        access_token = create_access_token(identity=username, additional_claims={"role": role})
+        return jsonify({"success": True, "token": access_token, "role": role})
 
     return jsonify({"success": False, "message": "帳號或密碼錯誤"})
 
@@ -211,7 +249,8 @@ def check_auth():
     current_user = get_jwt_identity()
 
     if current_user:
-        return jsonify({"loggedIn": True, "username": current_user})
+        claims = get_jwt()
+        return jsonify({"loggedIn": True, "username": current_user, "role": claims.get("role", "member")})
 
     return jsonify({"loggedIn": False})
 
@@ -298,6 +337,88 @@ def get_product(product_id):
         return jsonify({"success": False, "message": "找不到商品資料"}), 404
 
     return jsonify({"success": True, "product": result.data[0]})
+
+
+@app.route('/api/admin/products', methods=['GET'])
+@admin_required
+def admin_get_products():
+    try:
+        result = supabase.table("products") \
+            .select(PRODUCT_FIELDS) \
+            .order("id") \
+            .execute()
+
+        return jsonify({"success": True, "products": result.data or []})
+    except Exception as error:
+        return jsonify({"success": False, "message": f"Admin product load failed: {error}"}), 500
+
+
+@app.route('/api/admin/products', methods=['POST'])
+@admin_required
+def admin_create_product():
+    data = request.get_json() or {}
+    payload = {
+        "name": (data.get("name") or "").strip(),
+        "description": (data.get("description") or "").strip(),
+        "category": (data.get("category") or "").strip(),
+        "feature": (data.get("feature") or "").strip(),
+        "price": int(data.get("price") or 0),
+        "stock": int(data.get("stock") or 0),
+        "image_url": (data.get("image_url") or "").strip(),
+        "is_active": bool(data.get("is_active"))
+    }
+
+    if not payload["name"]:
+        return jsonify({"success": False, "message": "Product name is required"}), 400
+
+    if payload["stock"] <= 0:
+        payload["stock"] = 0
+        payload["is_active"] = False
+
+    try:
+        result = supabase.table("products") \
+            .insert(payload) \
+            .execute()
+
+        return jsonify({"success": True, "product": result.data[0] if result.data else None})
+    except Exception as error:
+        return jsonify({"success": False, "message": f"Admin product create failed: {error}"}), 500
+
+
+@app.route('/api/admin/products/<int:product_id>', methods=['PUT'])
+@admin_required
+def admin_update_product(product_id):
+    data = request.get_json() or {}
+    update_data = {
+        "name": (data.get("name") or "").strip(),
+        "description": (data.get("description") or "").strip(),
+        "category": (data.get("category") or "").strip(),
+        "feature": (data.get("feature") or "").strip(),
+        "price": int(data.get("price") or 0),
+        "stock": int(data.get("stock") or 0),
+        "image_url": (data.get("image_url") or "").strip(),
+        "is_active": bool(data.get("is_active"))
+    }
+
+    if not update_data["name"]:
+        return jsonify({"success": False, "message": "Product name is required"}), 400
+
+    if update_data["stock"] <= 0:
+        update_data["stock"] = 0
+        update_data["is_active"] = False
+
+    try:
+        result = supabase.table("products") \
+            .update(update_data) \
+            .eq("id", product_id) \
+            .execute()
+
+        if not result.data:
+            return jsonify({"success": False, "message": "Product not found"}), 404
+
+        return jsonify({"success": True, "product": result.data[0]})
+    except Exception as error:
+        return jsonify({"success": False, "message": f"Admin product update failed: {error}"}), 500
 
 CART_ITEM_FIELDS = "id,product_id,quantity,created_at,updated_at,products(id,name,price,image_url,stock,is_active)"
 
@@ -467,6 +588,15 @@ def clear_cart():
         return jsonify({"success": False, "message": f"購物車清空失敗：{error}"}), 500
 ORDER_FIELDS = "id,member_id,status,total_amount,recipient_name,recipient_address,created_at,updated_at"
 ORDER_ITEM_FIELDS = "id,order_id,product_id,quantity,unit_price,line_total,created_at,products(id,name,image_url)"
+VALID_ORDER_STATUSES = {
+    "pending_payment",
+    "paid",
+    "processing",
+    "shipped",
+    "completed",
+    "cancelled",
+    "payment_failed"
+}
 
 
 def get_member_order(member_id, order_id):
@@ -490,11 +620,66 @@ def attach_order_items(order):
     return order
 
 
+def attach_member(order):
+    member_result = supabase.table("members") \
+        .select("id,email,name") \
+        .eq("id", order["member_id"]) \
+        .limit(1) \
+        .execute()
+
+    order["member"] = member_result.data[0] if member_result.data else None
+    return order
+
+
 def deactivate_product_if_out_of_stock(product_id, stock):
     if stock <= 0:
         supabase.table("products") \
             .update({"stock": 0, "is_active": False}) \
             .eq("id", product_id) \
+            .execute()
+
+
+def apply_successful_payment_stock_update(order_id):
+    items_result = supabase.table("order_items") \
+        .select("product_id,quantity") \
+        .eq("order_id", order_id) \
+        .execute()
+
+    for item in items_result.data or []:
+        product_id = item.get("product_id")
+        quantity = int(item.get("quantity") or 0)
+        product_result = supabase.table("products") \
+            .select("id,stock") \
+            .eq("id", product_id) \
+            .limit(1) \
+            .execute()
+
+        if not product_result.data:
+            continue
+
+        current_stock = int(product_result.data[0].get("stock") or 0)
+        next_stock = max(0, current_stock - quantity)
+        supabase.table("products") \
+            .update({"stock": next_stock, "is_active": next_stock > 0}) \
+            .eq("id", product_id) \
+            .execute()
+
+
+def remove_paid_order_items_from_cart(member_id, order_id):
+    items_result = supabase.table("order_items") \
+        .select("product_id") \
+        .eq("order_id", order_id) \
+        .execute()
+
+    for item in items_result.data or []:
+        product_id = item.get("product_id")
+        if product_id is None:
+            continue
+
+        supabase.table("cart_items") \
+            .delete() \
+            .eq("member_id", member_id) \
+            .eq("product_id", product_id) \
             .execute()
 
 
@@ -696,7 +881,82 @@ def cancel_order(order_id):
     return jsonify({"success": True, "message": "Order cancelled", "order": updated_order})
 
 
+@app.route('/api/admin/orders', methods=['GET'])
+@admin_required
+def admin_get_orders():
+    status = request.args.get("status")
+
+    if status and status not in VALID_ORDER_STATUSES:
+        return jsonify({"success": False, "message": "Invalid order status"}), 400
+
+    try:
+        query = supabase.table("orders") \
+            .select(ORDER_FIELDS) \
+            .order("id", desc=True)
+
+        if status:
+            query = query.eq("status", status)
+
+        orders_result = query.execute()
+        orders = []
+        for order in orders_result.data or []:
+            orders.append(attach_member(attach_order_items(order)))
+
+        return jsonify({"success": True, "orders": orders})
+    except Exception as error:
+        return jsonify({"success": False, "message": f"Admin order load failed: {error}"}), 500
+
+
+@app.route('/api/admin/orders/<int:order_id>/status', methods=['PUT'])
+@admin_required
+def admin_update_order_status(order_id):
+    data = request.get_json() or {}
+    next_status = data.get("status")
+
+    if next_status not in VALID_ORDER_STATUSES:
+        return jsonify({"success": False, "message": "Invalid order status"}), 400
+
+    order_result = supabase.table("orders") \
+        .select(ORDER_FIELDS) \
+        .eq("id", order_id) \
+        .limit(1) \
+        .execute()
+
+    if not order_result.data:
+        return jsonify({"success": False, "message": "Order not found"}), 404
+
+    order = order_result.data[0]
+
+    try:
+        current_status = order.get("status")
+        update_data = {"status": next_status, "updated_at": utc_now_iso()}
+
+        if current_status != "paid" and next_status == "paid":
+            recipient_name = (order.get("recipient_name") or "").strip()
+            recipient_address = (order.get("recipient_address") or "").strip()
+
+            if not recipient_name or not recipient_address:
+                return jsonify({
+                    "success": False,
+                    "message": "Recipient name and address are required before marking paid"
+                }), 400
+
+            apply_successful_payment_stock_update(order_id)
+            remove_paid_order_items_from_cart(order["member_id"], order_id)
+
+        result = supabase.table("orders") \
+            .update(update_data) \
+            .eq("id", order_id) \
+            .execute()
+
+        if not result.data:
+            return jsonify({"success": False, "message": "Order update failed"}), 500
+
+        updated_order = attach_member(attach_order_items(result.data[0]))
+        return jsonify({"success": True, "order": updated_order})
+    except Exception as error:
+        return jsonify({"success": False, "message": f"Admin order update failed: {error}"}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
-
-

@@ -1,5 +1,7 @@
 ﻿Flask
-flask-jwt-extended
 python-dotenv
+flask-jwt-extended
 supabase
-Werkzeug
+werkzeug
+gunicorn
+flask-cors

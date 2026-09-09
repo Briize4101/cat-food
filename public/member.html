@@ -66,6 +66,24 @@
             font-size: 14px;
         }
 
+        .admin-actions {
+            display: none;
+            gap: 12px;
+            justify-content: center;
+            margin: 0 auto 42px;
+            max-width: 560px;
+            padding: 0 20px;
+        }
+
+        .admin-actions.is-visible {
+            display: flex;
+        }
+
+        .admin-actions .btn {
+            width: auto;
+            text-decoration: none;
+        }
+
 
         .order-history {
             max-width: 880px;
@@ -195,6 +213,11 @@
             </form>
         </section>
 
+        <section id="adminActions" class="admin-actions">
+            <a href="/admin/products" class="btn">Product Admin</a>
+            <a href="/admin/orders" class="btn">Order Admin</a>
+        </section>
+
         <section class="order-history">
             <div class="subtitle">Paid Order History</div>
             <p id="orderHistoryStatus" class="order-history-status">Loading orders...</p>
@@ -218,6 +241,27 @@ initMemberProfileForm();
 if (typeof initMemberOrderHistory === 'function') {
     initMemberOrderHistory();
 }
+
+async function initAdminActions() {
+    const adminActions = document.getElementById("adminActions");
+    const token = localStorage.getItem("userToken");
+    if (!adminActions || !token) return;
+
+    try {
+        const response = await fetch("/api/check-auth", {
+            cache: "no-store",
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (response.ok && data.loggedIn && data.role === "admin") {
+            adminActions.classList.add("is-visible");
+        }
+    } catch (error) {
+        console.error("Admin role check failed:", error);
+    }
+}
+
+initAdminActions();
 </script>
 </html>
 
