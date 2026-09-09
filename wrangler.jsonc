@@ -1,0 +1,7 @@
+{
+  "name": "cat-food-web-practice",
+  "compatibility_date": "2026-09-09",
+  "assets": {
+    "directory": "./public"
+  }
+}

@@ -3,3 +3,16 @@
 __pycache__/
 *.pyc
 project.db
+
+.env.*
+!.env.example
+private/
+backend/private/
+*.pem
+*.key
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+node_modules/
+.wrangler/
